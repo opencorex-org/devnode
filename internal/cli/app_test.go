@@ -77,3 +77,46 @@ func TestTunnelCatalog(t *testing.T) {
 		t.Fatal("aliases should not duplicate tunnel help")
 	}
 }
+
+func TestResolveProjectAndArgs(t *testing.T) {
+	// Explicit project name and subcommand
+	p, args, err := resolveProjectAndArgs([]string{"my-app", "install"})
+	if err != nil || p != "my-app" || len(args) != 1 || args[0] != "install" {
+		t.Fatalf("unexpected resolve: p=%s, args=%v, err=%v", p, args, err)
+	}
+
+	// Explicit project name with no args defaults to "install"
+	p, args, err = resolveProjectAndArgs([]string{"my-app"})
+	if err != nil || p != "my-app" || len(args) != 1 || args[0] != "install" {
+		t.Fatalf("unexpected default install: p=%s, args=%v, err=%v", p, args, err)
+	}
+
+	// Subcommand provided without project name -> infers from current dir
+	cwd, _ := os.Getwd()
+	expectedDir := filepath.Base(cwd)
+	p, args, err = resolveProjectAndArgs([]string{"add", "express"})
+	if err != nil || p != expectedDir || len(args) != 2 || args[0] != "add" || args[1] != "express" {
+		t.Fatalf("unexpected inferred project: p=%s (want %s), args=%v, err=%v", p, expectedDir, args, err)
+	}
+
+	// Flag provided without project name -> infers from current dir
+	p, args, err = resolveProjectAndArgs([]string{"--version"})
+	if err != nil || p != expectedDir || len(args) != 1 || args[0] != "--version" {
+		t.Fatalf("unexpected flag resolve: p=%s, args=%v, err=%v", p, args, err)
+	}
+}
+
+func TestSafeProjectName(t *testing.T) {
+	valid := []string{"my-app", "test_project", "api.v2", "Project123"}
+	for _, name := range valid {
+		if !safeProjectName(name) {
+			t.Errorf("expected %q to be valid", name)
+		}
+	}
+	invalid := []string{"", ".", "..", "my/app", "test;rm -rf", "project$name", "app`evil`", "name\nnewline"}
+	for _, name := range invalid {
+		if safeProjectName(name) {
+			t.Errorf("expected %q to be invalid", name)
+		}
+	}
+}

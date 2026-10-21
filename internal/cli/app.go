@@ -28,7 +28,35 @@ const hardwareScript = `printf '%s\n' '========== CPU =========='; lscpu | grep 
 
 const networkScript = `printf '%s\n' '========== ADDRESSES =========='; hostname -I; ip -brief address; printf '%s\n' '========== ROUTES =========='; ip route; printf '%s\n' '========== LISTENING PORTS =========='; ss -lntup 2>/dev/null || ss -lnt 2>/dev/null; printf '%s\n' '========== DNS =========='; if command -v resolvectl >/dev/null 2>&1; then resolvectl status | sed -n '1,80p'; else cat /etc/resolv.conf; fi`
 
-const projectsScript = `printf '%s\n' 'Git repositories:'; found=0; for root in "$HOME/projects" "$HOME/dev" "$HOME/workspace"; do [ -d "$root" ] || continue; find "$root" -maxdepth 4 -type d -name .git -print 2>/dev/null | sed 's#/.git$##'; found=1; done; [ "$found" -eq 1 ] || printf '%s\n' 'No standard project directories found.'`
+const projectsScript = `printf '%s\n' 'DevNode Projects (~/projects):'
+mkdir -p "$HOME/projects"
+found=0
+for d in "$HOME/projects"/*; do
+  [ -d "$d" ] || continue
+  name=$(basename "$d")
+  pkg="none"
+  [ -f "$d/pnpm-lock.yaml" ] && pkg="pnpm"
+  [ -f "$d/package-lock.json" ] && pkg="npm"
+  [ -f "$d/yarn.lock" ] && pkg="yarn"
+  [ -f "$d/bun.lockb" ] || [ -f "$d/bun.lock" ] && pkg="bun"
+  branch=""
+  if [ -d "$d/.git" ]; then
+    b=$(git -C "$d" rev-parse --abbrev-ref HEAD 2>/dev/null || true)
+    [ -n "$b" ] && branch=" (git: $b)"
+  fi
+  printf '  • %-20s [%-4s]%s\n' "$name" "$pkg" "$branch"
+  found=1
+done
+if [ "$found" -eq 0 ]; then
+  printf '  No projects found in ~/projects.\n  Create one with: devnode project create <name>\n'
+fi
+for root in "$HOME/dev" "$HOME/workspace"; do
+  [ -d "$root" ] || continue
+  printf '\nOther repositories in %s:\n' "$root"
+  find "$root" -maxdepth 3 -type d -name .git 2>/dev/null | while read -r g; do
+    printf '  • %s\n' "$(dirname "$g")"
+  done
+done`
 
 const doctorScript = `printf '%-20s %s\n' CHECK RESULT; for cmd in ssh systemctl docker git curl; do if command -v "$cmd" >/dev/null 2>&1; then printf '%-20s %s\n' "$cmd" OK; else printf '%-20s %s\n' "$cmd" MISSING; fi; done; if docker info >/dev/null 2>&1; then printf '%-20s %s\n' docker-access OK; else printf '%-20s %s\n' docker-access UNAVAILABLE; fi; printf '%-20s %s\n' disk-root "$(df -hP / | awk 'NR==2 {print $5 " used"}')"; printf '%-20s %s\n' memory "$(free -h | awk '/Mem:/ {print $3 " / " $2}')"`
 
@@ -111,6 +139,19 @@ func (a *App) Run(ctx context.Context, args []string) error {
 		return noArgs(args[1:], func() error { return client.Run(ctx, []string{"sh", "-c", networkScript}, false, false) })
 	case "projects":
 		return noArgs(args[1:], func() error { return client.Run(ctx, []string{"sh", "-c", projectsScript}, false, false) })
+	case "project":
+		return a.project(ctx, client, args[1:])
+	case "pnpm", "npm", "yarn", "bun":
+		return a.packageManager(ctx, client, args[0], args[1:])
+	case "run":
+		if len(args) < 2 {
+			return errors.New("usage: devnode run <project> [script]")
+		}
+		script := "dev"
+		if len(args) > 2 {
+			script = args[2]
+		}
+		return a.packageManager(ctx, client, "pnpm", []string{args[1], "run", script})
 	case "doctor":
 		return noArgs(args[1:], func() error { return client.Run(ctx, []string{"sh", "-c", doctorScript}, false, false) })
 	case "ros":
@@ -300,11 +341,16 @@ func (a *App) ros(ctx context.Context, client devssh.Client, args []string) erro
 
 func (a *App) tunnel(ctx context.Context, client devssh.Client, args []string) error {
 	if len(args) < 1 || len(args) > 2 {
-		return errors.New("usage: devnode tunnel <service> [local-port]")
+		return errors.New("usage: devnode tunnel <service|port> [local-port]")
 	}
-	remotePort, ok := tunnelPorts[args[0]]
-	if !ok {
-		return fmt.Errorf("unknown tunnel %q; available: %s", args[0], tunnelNames())
+	targetName := args[0]
+	remotePort := 0
+	if p, err := strconv.Atoi(targetName); err == nil && p >= 1 && p <= 65535 {
+		remotePort = p
+	} else if p, ok := tunnelPorts[targetName]; ok {
+		remotePort = p
+	} else {
+		return fmt.Errorf("unknown tunnel %q; available services: %s, or specify a port number (1-65535)", targetName, tunnelNames())
 	}
 	localPort := remotePort
 	if len(args) == 2 {
@@ -314,8 +360,106 @@ func (a *App) tunnel(ctx context.Context, client devssh.Client, args []string) e
 		}
 		localPort = n
 	}
-	fmt.Fprintf(a.Out, "Forwarding 127.0.0.1:%d to %s:%d. Press Ctrl-C to stop.\n", localPort, args[0], remotePort)
+	fmt.Fprintf(a.Out, "Forwarding 127.0.0.1:%d to %s:%d. Press Ctrl-C to stop.\n", localPort, targetName, remotePort)
 	return client.Forward(ctx, localPort, remotePort)
+}
+
+var pmSubcommands = map[string]bool{
+	"install": true, "i": true, "add": true, "remove": true, "rm": true,
+	"run": true, "dev": true, "build": true, "test": true, "start": true,
+	"update": true, "up": true, "init": true, "create": true, "list": true,
+	"ls": true, "outdated": true, "audit": true, "exec": true, "dlx": true,
+	"publish": true, "link": true, "unlink": true, "why": true,
+}
+
+func resolveProjectAndArgs(args []string) (string, []string, error) {
+	if len(args) == 0 {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return "", nil, fmt.Errorf("unable to determine current directory: %w", err)
+		}
+		return filepath.Base(cwd), []string{"install"}, nil
+	}
+
+	first := args[0]
+	if pmSubcommands[first] || strings.HasPrefix(first, "-") {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return "", nil, fmt.Errorf("unable to determine current directory: %w", err)
+		}
+		return filepath.Base(cwd), args, nil
+	}
+
+	if !safeProjectName(first) {
+		return "", nil, fmt.Errorf("invalid project name %q; use letters, numbers, dashes, or underscores", first)
+	}
+
+	project := first
+	if len(args) == 1 {
+		return project, []string{"install"}, nil
+	}
+	return project, args[1:], nil
+}
+
+func safeProjectName(name string) bool {
+	if name == "" || name == "." || name == ".." || len(name) > 64 {
+		return false
+	}
+	for _, r := range name {
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' || r == '.') {
+			return false
+		}
+	}
+	return true
+}
+
+func (a *App) packageManager(ctx context.Context, client devssh.Client, pm string, args []string) error {
+	project, pmArgs, err := resolveProjectAndArgs(args)
+	if err != nil {
+		return err
+	}
+	if !safeProjectName(project) {
+		return fmt.Errorf("invalid project name %q", project)
+	}
+
+	quotedArgs := devssh.JoinCommand(append([]string{pm}, pmArgs...))
+	remoteScript := fmt.Sprintf(`for _p in "$HOME/.local/bin" "$HOME/.cargo/bin" /snap/bin /usr/local/bin; do
+  [ -d "$_p" ] && case ":$PATH:" in *":$_p:"*) ;; *) PATH="$_p:$PATH" ;; esac
+done
+if [ -d "$HOME/.nvm/versions/node" ]; then
+  _latest_node=$(ls "$HOME/.nvm/versions/node" 2>/dev/null | tail -n1 || true)
+  [ -n "$_latest_node" ] && [ -d "$HOME/.nvm/versions/node/$_latest_node/bin" ] && PATH="$HOME/.nvm/versions/node/$_latest_node/bin:$PATH"
+fi
+if ! command -v %s >/dev/null 2>&1; then
+  printf '%%s\n' '%s is not installed on the server. Run: devnode exec npm install -g %s' >&2
+  exit 1
+fi
+mkdir -p "$HOME/projects/%s" && cd "$HOME/projects/%s" && exec %s`, pm, pm, pm, project, project, quotedArgs)
+
+	fmt.Fprintf(a.Out, "→ [%s in ~/projects/%s]: %s %s\n", pm, project, pm, strings.Join(pmArgs, " "))
+	return client.Run(ctx, []string{"sh", "-c", remoteScript}, devssh.IsTerminal(a.Out), false)
+}
+
+func (a *App) project(ctx context.Context, client devssh.Client, args []string) error {
+	if len(args) == 0 || args[0] == "list" {
+		return client.Run(ctx, []string{"sh", "-c", projectsScript}, false, false)
+	}
+	switch args[0] {
+	case "create":
+		if len(args) != 2 || !safeProjectName(args[1]) {
+			return errors.New("usage: devnode project create <name>")
+		}
+		script := fmt.Sprintf(`mkdir -p "$HOME/projects/%s" && printf '%%s\n' 'Created ~/projects/%s'`, args[1], args[1])
+		return client.Run(ctx, []string{"sh", "-c", script}, false, false)
+	case "shell":
+		if len(args) != 2 || !safeProjectName(args[1]) {
+			return errors.New("usage: devnode project shell <name>")
+		}
+		script := fmt.Sprintf(`mkdir -p "$HOME/projects/%s" && cd "$HOME/projects/%s" && exec ${SHELL:-bash}`, args[1], args[1])
+		return client.Run(ctx, []string{"sh", "-c", script}, true, false)
+	default:
+		return fmt.Errorf("unknown project action %q; use: devnode project [list|create|shell]", args[0])
+	}
 }
 
 var tunnelPorts = map[string]int{"postgres": 5432, "postgresql": 5432, "mysql": 3306, "redis": 6379, "mongodb": 27017, "adminer": 8080, "pgadmin": 5050, "minio": 9000, "mailpit": 8025, "portainer": 9443, "uptime-kuma": 3001, "netdata": 19999, "dozzle": 8080, "node-red": 1880, "localstack": 4566, "mosquitto": 1883, "jupyter": 8888}
@@ -482,11 +626,15 @@ Commands:
   status, dashboard               Open the live server dashboard
   hardware                        Show CPU, RAM, storage, GPU, and Docker
   network                         Show addresses, routes, ports, and DNS
-  projects                        Find Git projects in standard directories
+  projects                        List projects in ~/projects and Git repos
+  project <list|create|shell>     Manage development projects in ~/projects
+  pnpm [PROJECT] <command...>     Run pnpm inside ~/projects/PROJECT on Ubuntu
+  npm [PROJECT] <command...>      Run npm inside ~/projects/PROJECT on Ubuntu
+  run <project> [script]          Run project script (e.g. dev) on Ubuntu
   doctor                          Check server development prerequisites
   ros <status|nodes|topics>       Inspect the remote ROS 2 environment
   install [service]               Choose and install one missing service
-  tunnel SERVICE [LOCAL_PORT]     Securely forward a service to your Mac
+  tunnel <SERVICE|PORT> [LOCAL]   Securely forward a service or port to your Mac
   monitor                         Open btop, htop, or top
   docker <arguments...>           Run a remote Docker command
   service NAME ACTION             Control Docker or systemd automatically
