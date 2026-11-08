@@ -1,6 +1,20 @@
 # ── Build output ──────────────────────────────────────────────
 /bin/
 dist/
+/desktop/bin/
+/desktop/.task/
+/desktop/*.syso
+/desktop/frontend/node_modules/
+/desktop/frontend/bindings/
+/desktop/frontend/*.tsbuildinfo
+/desktop/frontend/vite.config.js
+/desktop/frontend/vite.config.d.ts
+/desktop/frontend/.vite/
+/desktop/build/android/
+/desktop/build/ios/
+/desktop/build/linux/appimage/build/
+/desktop/build/linux/*.desktop
+/desktop/build/windows/nsis/*WebView2*.exe
 
 # ── Real user config (never commit) ───────────────────────────
 config.yaml
@@ -17,6 +31,7 @@ vendor/
 *.test
 *.out
 coverage.html
+*.log
 
 # ── OS / IDE ──────────────────────────────────────────────────
 .DS_Store
