@@ -58,6 +58,10 @@ jobs:
       - name: Test core Go module
         run: go test ./...
 
+      - name: Generate Wails frontend bindings
+        working-directory: desktop
+        run: go run github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0 generate bindings -clean=true -ts -i
+
       - name: Build frontend
         working-directory: desktop/frontend
         run: |
