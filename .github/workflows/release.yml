@@ -60,7 +60,10 @@ jobs:
 
       - name: Generate Wails frontend bindings
         working-directory: desktop
-        run: go run github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0 generate bindings -clean=true -ts -i
+        env:
+          # Binding generation is headless; avoid linking Linux GTK/WebKit in CI.
+          CGO_ENABLED: 0
+        run: go run -tags server github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0 generate bindings -f '-tags=server' -clean=true -ts -i
 
       - name: Build frontend
         working-directory: desktop/frontend
@@ -71,7 +74,9 @@ jobs:
       # desktop/main.go embeds frontend/dist, so this must run after the web build.
       - name: Test desktop Go module
         working-directory: desktop
-        run: go test ./...
+        env:
+          CGO_ENABLED: 0
+        run: go test -tags server ./...
 
   release:
     if: github.event_name != 'pull_request'
