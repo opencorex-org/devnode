@@ -285,8 +285,12 @@ func (m model) View() tea.View {
 	}
 	body := ""
 	if m.searchingHost {
+		searchMsg := fmt.Sprintf("Scanning the local network for an SSH server on port %d.", m.cfg.Port)
+		if !config.NeedsDiscovery(m.cfg.Host) {
+			searchMsg = fmt.Sprintf("Looking for the trusted SSH key near %s on port %d.", m.cfg.Host, m.cfg.Port)
+		}
 		body = titleStyle.Render("Searching local network…") + "\n\n" +
-			fmt.Sprintf("Looking for the trusted SSH key near %s on port %d.", m.cfg.Host, m.cfg.Port) + "\n\n" +
+			searchMsg + "\n\n" +
 			mutedStyle.Render("Only an exact known-host key match will be used.")
 	} else if m.searchErr != nil || m.err != nil && (m.snapshot.Host == "" || m.failedAttempts >= 5 || m.verifyHostKey) {
 		body = m.errorView()

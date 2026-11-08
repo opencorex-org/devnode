@@ -123,6 +123,21 @@ func (a *App) Run(ctx context.Context, args []string) error {
 	}
 	client := devssh.Client{Config: cfg, In: a.In, Out: a.Out, Err: a.Err}
 
+	if config.NeedsDiscovery(cfg.Host) && args[0] != "discover" {
+		fmt.Fprintf(a.Out, "Detecting server on the local network (port %d)...\n", cfg.Port)
+		host, err := client.DiscoverMovedHost(ctx)
+		if err != nil {
+			return fmt.Errorf("auto-discovery: %w", err)
+		}
+		updated, err := saveDiscoveredHost(*configPath, cfg, host)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(a.Out, "Found server at %s. Updated %s\n", host, *configPath)
+		cfg = updated
+		client.Config = updated
+	}
+
 	switch args[0] {
 	case "discover":
 		return a.discover(ctx, client, cfg, *configPath, args[1:])
@@ -203,11 +218,15 @@ func (a *App) discover(ctx context.Context, client devssh.Client, cfg config.Con
 	if fs.NArg() != 0 {
 		return errors.New("usage: devnode discover [--setup]")
 	}
-	parts := strings.Split(cfg.Host, ".")
-	if len(parts) == 4 {
-		fmt.Fprintf(a.Out, "Searching %s.%s.%s.0/24 for the trusted SSH host key on port %d...\n", parts[0], parts[1], parts[2], cfg.Port)
+	if config.NeedsDiscovery(cfg.Host) {
+		fmt.Fprintf(a.Out, "Scanning the local network for an SSH server on port %d...\n", cfg.Port)
 	} else {
-		fmt.Fprintf(a.Out, "Searching near %s for the trusted SSH host key on port %d...\n", cfg.Host, cfg.Port)
+		parts := strings.Split(cfg.Host, ".")
+		if len(parts) == 4 {
+			fmt.Fprintf(a.Out, "Searching local network and %s.%s.%s.0/24 for the trusted SSH host key on port %d...\n", parts[0], parts[1], parts[2], cfg.Port)
+		} else {
+			fmt.Fprintf(a.Out, "Searching local network for %s trusted SSH host key on port %d...\n", cfg.Host, cfg.Port)
+		}
 	}
 	host, err := client.DiscoverMovedHost(ctx)
 	if err != nil {

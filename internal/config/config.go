@@ -11,7 +11,7 @@ import (
 )
 
 const Example = `# DevNode configuration
-host: 192.168.1.17
+host: auto
 user: lahiru
 port: 22
 identity_file: ""
@@ -179,6 +179,12 @@ func Target(c Config) string {
 		return c.Host
 	}
 	return c.User + "@" + c.Host
+}
+
+// NeedsDiscovery reports whether the host is a placeholder that requires
+// auto-discovery before an SSH connection can be attempted.
+func NeedsDiscovery(host string) bool {
+	return host == "auto" || host == "192.168.x.x" || host == ""
 }
 
 func applyEnv(c *Config) error {

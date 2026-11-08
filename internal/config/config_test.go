@@ -85,3 +85,25 @@ func TestSaveRoundTrip(t *testing.T) {
 		t.Fatalf("mode = %o", info.Mode().Perm())
 	}
 }
+
+
+func TestNeedsDiscovery(t *testing.T) {
+	for _, h := range []string{"auto", "192.168.x.x", ""} {
+		if !NeedsDiscovery(h) {
+			t.Errorf("expected NeedsDiscovery(%q) = true", h)
+		}
+	}
+	for _, h := range []string{"192.168.1.20", "ubuntu.local", "server"} {
+		if NeedsDiscovery(h) {
+			t.Errorf("expected NeedsDiscovery(%q) = false", h)
+		}
+	}
+}
+
+func TestValidateAcceptsAutoHost(t *testing.T) {
+	c := Defaults()
+	c.Host = "auto"
+	if err := c.Validate(); err != nil {
+		t.Fatalf("auto host should be valid: %v", err)
+	}
+}

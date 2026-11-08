@@ -15,26 +15,34 @@ DevNode is a fast, dependency-free macOS CLI for managing an Ubuntu development 
 ./scripts/install.sh
 ```
 
-The installer performs the local setup automatically:
+The installer performs the local setup **automatically with zero manual input**:
 
 - Builds and installs `~/.local/bin/devnode`
-- Creates `~/.config/devnode/config.yaml`
+- Creates `~/.config/devnode/config.yaml` with `host: auto` (auto-discovers Ubuntu on the LAN)
+- Detects the current macOS username for the SSH user
 - Adds `~/.local/bin` to `~/.zshrc` (if not already present)
 - Preserves an existing configuration on later runs
 
-Open a new terminal and run the one-time SSH setup, followed by the dashboard:
+Open a new terminal and run the one-time SSH setup:
 
 ```sh
 devnode setup
+```
+
+DevNode will **automatically find your Ubuntu server** on the local network, generate a dedicated SSH key at `~/.ssh/devnode_ed25519`, install its public half on Ubuntu, and save the discovered IP in the configuration. Ubuntu may ask for your account password once. DevNode never stores that password.
+
+After setup, just run:
+
+```sh
 devnode status
 ```
 
-`devnode setup` generates a dedicated key at `~/.ssh/devnode_ed25519`, installs its public half on Ubuntu, and saves its path in the configuration. Ubuntu may ask for your account password once. DevNode never stores that password. Verify the server's host-key fingerprint before accepting it.
+If the Ubuntu laptop later receives a different IP from the router (DHCP), DevNode will automatically rediscover it.
 
-To install with custom connection parameters:
+To install with custom connection parameters (optional — not needed for automatic mode):
 
 ```sh
-DEVNODE_HOST=192.168.x.x DEVNODE_USER=myuser DEVNODE_PORT=22 ./scripts/install.sh
+DEVNODE_HOST=ubuntu.local DEVNODE_USER=myuser DEVNODE_PORT=22 ./scripts/install.sh
 ```
 
 ---
@@ -217,13 +225,22 @@ DevNode provides safe, isolated service installations:
 Configuration is stored in `~/.config/devnode/config.yaml`:
 
 ```yaml
-host: 192.168.1.17
+# Set to an mDNS hostname (e.g. ubuntu.local) for automatic zero-config LAN discovery,
+# or to a local IPv4 address.
+host: ubuntu.local
 user: lahiru
 port: 22
 identity_file: "/Users/lahiru/.ssh/devnode_ed25519"
 connect_timeout: 8
 postgres_service: postgresql
 ```
+
+> **Tip - Zero-Config LAN Setup without Static IPs**:
+> To allow Ubuntu and your laptops to roam freely across any Wi-Fi or local area network without configuring static IPs:
+> 1. Keep Ubuntu on automatic DHCP so it automatically receives internet access, DNS, and a local IP from whatever network it joins.
+> 2. Ensure `avahi-daemon` is active on Ubuntu (`sudo apt install -y avahi-daemon && sudo systemctl enable --now avahi-daemon`).
+> 3. Use `host: <hostname>.local` (e.g. `ubuntu.local`) in your DevNode configuration. macOS resolves `.local` names natively via Bonjour across any LAN or mobile hotspot.
+> 4. If using an IP address, `devnode discover` will automatically search the current connected local network to find and save the updated IP.
 
 Environment variables can override any setting for automation:
 - `DEVNODE_HOST`

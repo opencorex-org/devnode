@@ -4,8 +4,8 @@ set -eu
 repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 install_dir=${DEVNODE_INSTALL_DIR:-"$HOME/.local/bin"}
 config_path=${DEVNODE_CONFIG:-"$HOME/.config/devnode/config.yaml"}
-server_host=${DEVNODE_HOST:-"192.168.x.x"}
-server_user=${DEVNODE_USER:-"your-username"}
+server_host=${DEVNODE_HOST:-"auto"}
+server_user=${DEVNODE_USER:-"$(whoami)"}
 server_port=${DEVNODE_PORT:-"22"}
 
 mkdir -p "$install_dir"
@@ -27,7 +27,7 @@ if [ ! -e "$config_path" ]; then
     printf '%s\n' 'connect_timeout: 8'
     printf '%s\n' 'postgres_service: postgresql'
   } > "$config_path"
-  printf 'Created %s for %s@%s\n' "$config_path" "$server_user" "$server_host"
+  printf 'Created %s (host: %s, user: %s)\n' "$config_path" "$server_host" "$server_user"
 else
   printf 'Preserved existing configuration at %s\n' "$config_path"
 fi
@@ -43,5 +43,6 @@ if [ "$install_dir" = "$HOME/.local/bin" ]; then
   fi
 fi
 
-printf '\nSetup complete. Open a new terminal, then run:\n  devnode status\n'
+printf '\nSetup complete. Open a new terminal, then run:\n  devnode setup\n'
+printf 'DevNode will automatically find your Ubuntu server on the local network.\n'
 

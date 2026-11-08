@@ -28,3 +28,29 @@ func TestMatchingHostsRequiresTrustedKey(t *testing.T) {
 		t.Fatalf("unexpected matches: %#v", got)
 	}
 }
+
+func TestDiscoverCandidatesIncludesLocalNetworkAndSubnet(t *testing.T) {
+	c := Client{Config: struct {
+		Host            string
+		User            string
+		Port            int
+		IdentityFile    string
+		ConnectTimeout  int
+		PostgresService string
+	}{Host: "192.168.1.17", Port: 22}}
+	candidates := c.DiscoverCandidates()
+	if len(candidates) == 0 {
+		t.Fatal("expected at least subnet candidates for 192.168.1.17")
+	}
+
+	// Should not panic on a .local hostname
+	cLocal := Client{Config: struct {
+		Host            string
+		User            string
+		Port            int
+		IdentityFile    string
+		ConnectTimeout  int
+		PostgresService string
+	}{Host: "ubuntu.local", Port: 22}}
+	_ = cLocal.DiscoverCandidates()
+}

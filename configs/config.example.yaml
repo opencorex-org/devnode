@@ -1,5 +1,6 @@
 # Copy to ~/.config/devnode/config.yaml and fill in your values.
-host: 192.168.x.x
+# Use "auto" to let DevNode find your Ubuntu server on the local network.
+host: auto
 user: your-username
 port: 22
 # Leave empty to use OpenSSH's agent and default key discovery.
