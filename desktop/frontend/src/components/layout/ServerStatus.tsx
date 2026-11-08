@@ -60,7 +60,7 @@ export function ServerStatus({
 
         {/* OpenCorex GitHub */}
         <a
-          href="https://github.com/opencorex-org"
+          href="https://github.com/opencorex-org/devnode"
           target="_blank"
           rel="noopener noreferrer"
           aria-label="Visit OpenCorex on GitHub"
@@ -76,7 +76,7 @@ export function ServerStatus({
         >
           <GitBranch size={11} strokeWidth={1.8} />
 
-          <span>OpenCorex</span>
+          <span>OpenCorex - DevNode</span>
 
           <ExternalLink
             size={9}

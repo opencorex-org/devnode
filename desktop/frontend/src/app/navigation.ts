@@ -5,6 +5,7 @@ import {
   Terminal as TerminalIcon,
   Settings,
   CircleHelp,
+  Info,
 } from "lucide-react";
 import type { Page } from "../types";
 import type { LucideIcon } from "lucide-react";
@@ -22,4 +23,5 @@ export const navigation: NavItem[] = [
   { id: "terminal", label: "Terminal", icon: TerminalIcon },
   { id: "settings", label: "Connection", icon: Settings },
   { id: "help", label: "Help & Setup", icon: CircleHelp },
+  { id: "about", label: "About", icon: Info },
 ];

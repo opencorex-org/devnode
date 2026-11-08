@@ -1,4 +1,4 @@
-export type Page = "overview" | "projects" | "services" | "terminal" | "settings" | "help";
+export type Page = "overview" | "projects" | "services" | "terminal" | "settings" | "help" | "about";
 
 export type Config = {
   Host: string;

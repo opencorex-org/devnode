@@ -8,6 +8,7 @@ import { ServicesPage } from "../features/services/ServicesPage";
 import { TerminalPage } from "../features/terminal/TerminalPage";
 import { ConnectionPage } from "../features/connection/ConnectionPage";
 import { HelpPage } from "../features/help/HelpPage";
+import { AboutPage } from "../features/about/AboutPage";
 import { api } from "../services/api";
 import { messageOf } from "../lib/utils";
 import { formatTime } from "../lib/formatters";
@@ -172,6 +173,10 @@ export default function App() {
 
       {page === "help" && (
         <HelpPage initialPlatform={boot?.platform ?? "darwin"} />
+      )}
+
+      {page === "about" && (
+        <AboutPage boot={boot} dashboard={dashboard} />
       )}
     </AppLayout>
   );
