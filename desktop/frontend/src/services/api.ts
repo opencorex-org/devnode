@@ -14,5 +14,6 @@ export const api = {
   manageService: (name: string, action: string) => Backend.ManageService(name, action),
   projects: () => Backend.Projects() as Promise<Project[]>,
   createProject: (name: string) => Backend.CreateProject(name),
+  deleteProject: (name: string) => Backend.DeleteProject(name),
   connectionCommand: () => Backend.ConnectionCommand() as Promise<string>,
 };
