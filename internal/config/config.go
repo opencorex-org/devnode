@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 )
@@ -38,6 +39,11 @@ func DefaultPath() string {
 	}
 	if dir := os.Getenv("XDG_CONFIG_HOME"); dir != "" {
 		return filepath.Join(dir, "devnode", "config.yaml")
+	}
+	if runtime.GOOS == "windows" {
+		if dir, err := os.UserConfigDir(); err == nil {
+			return filepath.Join(dir, "DevNode", "config.yaml")
+		}
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -77,7 +83,7 @@ func Save(path string, c Config) error {
 	if err := tmp.Close(); err != nil {
 		return fmt.Errorf("close config: %w", err)
 	}
-	if err := os.Rename(tmpName, path); err != nil {
+	if err := replaceFile(tmpName, path); err != nil {
 		return fmt.Errorf("replace config: %w", err)
 	}
 	ok = true

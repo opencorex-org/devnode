@@ -102,13 +102,11 @@ func (c Client) baseArgs(batch bool) []string {
 	args := []string{
 		"-o", "ConnectTimeout=" + strconv.Itoa(c.Config.ConnectTimeout),
 		"-p", strconv.Itoa(c.Config.Port),
-		"-o", "ControlMaster=auto",
-		"-o", "ControlPath=/tmp/devnode-cm-%C",
-		"-o", "ControlPersist=60s",
 		"-o", "ServerAliveInterval=30",
 		"-o", "ServerAliveCountMax=3",
 		"-o", "TCPKeepAlive=yes",
 	}
+	args = append(args, platformArgs()...)
 	if batch {
 		args = append(args, "-o", "BatchMode=yes")
 	}
