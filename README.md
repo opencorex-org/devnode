@@ -1,237 +1,230 @@
+<div align="center">
+
+<img src="assets/logo.png" alt="DevNode Logo" width="128" height="128" style="border-radius: 28px; box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.3);" />
+
 # DevNode
 
-DevNode is a fast, dependency-free macOS CLI for managing an Ubuntu development server over SSH. It uses the system `ssh` client with connection multiplexing, so your existing SSH agent, `~/.ssh/config`, host-key verification, and hardware-backed keys continue to work seamlessly with ~15ms query execution.
+**Next-generation control plane and developer companion for remote Ubuntu development environments over SSH.**
 
-The repository also contains **DevNode Desktop**, a custom Wails and React
-interface for macOS, Linux, and Windows. It reuses the same Go connection,
-discovery, monitoring, project, and service packages while keeping the CLI
-available for terminal workflows. See [`desktop/`](desktop/README.md).
+[![License: MIT](https://img.shields.io/badge/License-MIT-indigo.svg)](LICENSE)
+[![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go&logoColor=white)](https://golang.org)
+[![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux%20%7C%20Windows-slate.svg)]()
+[![Wails v3](https://img.shields.io/badge/Desktop-Wails%20v3%20%2B%20React%2019-red.svg)](desktop/)
+[![Tests](https://img.shields.io/badge/Tests-Passing-emerald.svg)]()
 
-## Requirements
+[Features](#-key-features) •
+[Quick Start](#-quick-start) •
+[CLI Reference](#-cli-command-reference) •
+[Desktop App](#-devnode-desktop) •
+[Configuration](#-configuration) •
+[Architecture](#-architecture) •
+[License](#-license)
 
-- macOS with OpenSSH (included by default)
-- Go 1.25 or newer to build
-- An Ubuntu host with `sshd` running and key-based login configured
-- `sudo` rights on Ubuntu for PostgreSQL control and system operations
+</div>
 
-## Install
+---
 
-```sh
+## 📌 Overview
+
+**DevNode** eliminates the friction of remote Linux development. It gives you a fast, dependency-free macOS CLI and a modern desktop application that communicates over a multiplexed OpenSSH connection to an Ubuntu machine.
+
+Keep resource-heavy node_modules, Docker containers, builds, and development databases on an Ubuntu workstation, home server, or cloud VM while writing code with native Mac battery life, responsive editors, and zero latency.
+
+- **Near-Instant Execution (~15ms)**: Uses native OpenSSH connection multiplexing (`ControlMaster`), keeping your existing `~/.ssh/config`, hardware keys, and SSH agents active.
+- **Dual Interface**: A full-featured terminal CLI with a live TUI, paired with a modern **Desktop GUI** built on Wails v3, React 19, and Tailwind CSS v4.
+- **Zero-Config LAN Pairing**: Discovers Ubuntu on local Wi-Fi/Ethernet via mDNS/Bonjour, negotiates secure ED25519 authentication, and automatically reconnects if DHCP assigns a new IP.
+- **Workspace & Package Management**: Run `pnpm`, `npm`, `yarn`, or `bun` on remote projects with automatic folder detection.
+- **1-Click Port Forwarding**: Secure local loopback tunnels for dev servers and databases.
+
+---
+
+## 🚀 Key Features
+
+| Capability | Description |
+| :--- | :--- |
+| 📊 **Real-Time Telemetry** | Full-screen live TUI monitoring CPU, RAM, disk, and bidirectional network traffic rates. |
+| 🔄 **Resilient Discovery** | Roam freely across Wi-Fi networks and mobile hotspots; DevNode auto-detects changed IPs. |
+| 📦 **Remote Projects** | Manage development projects stored in `~/projects` with live Git branch & dirty tree status. |
+| 🔌 **Zero-Leak Tunnels** | Single-command port forwarding binding to Mac `127.0.0.1` (Next.js, Vite, Postgres, Redis, etc.). |
+| 🛠️ **Service Catalog** | 16+ guided services (Docker, Postgres, Redis, Portainer, Uptime Kuma, MongoDB, Jupyter, ROS 2, MinIO). |
+| 🛡️ **Sleep-Proof Shells** | Persistent tmux session attachment survives laptop lid closures and network drops. |
+| 🖥️ **Cross-Platform GUI** | Dedicated desktop app for macOS, Linux, and Windows with interactive service guides and project controls. |
+
+---
+
+## 🏗️ Architecture
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│                              LOCAL CLIENT                              │
+│                                                                        │
+│   ┌───────────────────────────┐      ┌─────────────────────────────┐   │
+│   │        DevNode CLI        │      │     DevNode Desktop GUI     │   │
+│   │   (Go / Bubble Tea TUI)   │      │  (Wails v3 + React 19 + TS) │   │
+│   └─────────────┬─────────────┘      └──────────────┬──────────────┘   │
+│                 │                                   │                  │
+│                 └─────────────────┬─────────────────┘                  │
+│                                   │                                    │
+│                 ┌─────────────────▼─────────────────┐                  │
+│                 │      OpenSSH Multiplexing Engine  │                  │
+│                 │ (ControlMaster / devnode-cm-%C)   │                  │
+│                 └─────────────────┬─────────────────┘                  │
+└───────────────────────────────────┼────────────────────────────────────┘
+                                    │ Encrypted SSH Tunnel
+                                    │ (~15ms latency)
+┌───────────────────────────────────▼────────────────────────────────────┐
+│                             REMOTE UBUNTU                              │
+│                                                                        │
+│   ┌────────────────────┐ ┌────────────────────┐ ┌──────────────────┐   │
+│   │  devnode-agent     │ │  Docker Engine &   │ │  systemd Units & │   │
+│   │  (Pairing Helper)  │ │  Containers        │ │  Background Daem.│   │
+│   └────────────────────┘ └────────────────────┘ └──────────────────┘   │
+│   ┌────────────────────────────────────────────────────────────────┐   │
+│   │             Projects Workspace (`~/projects/*`)                │   │
+│   │             Package Managers: pnpm • npm • yarn • bun          │   │
+│   └────────────────────────────────────────────────────────────────┘   │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## ⚡ Quick Start
+
+### 1. Prerequisites
+
+- **Client**: macOS 11+ (Apple Silicon or Intel), Linux, or Windows with OpenSSH.
+- **Server**: Ubuntu 22.04 LTS or newer with `openssh-server` running.
+- **Build toolchain**: Go 1.25+ (to build from source).
+
+### 2. Installation
+
+Run the automated local installer:
+
+```bash
 ./scripts/install.sh
 ```
 
-The installer performs the local setup **automatically with zero manual input**:
+The installer automatically:
+- Compiles and links `~/.local/bin/devnode`.
+- Configures `~/.config/devnode/config.yaml` with automatic LAN discovery (`host: auto`).
+- Configures user shell profile paths (`~/.zshrc` / `~/.bashrc`).
 
-- Builds and installs `~/.local/bin/devnode`
-- Creates `~/.config/devnode/config.yaml` with `host: auto` (auto-discovers Ubuntu on the LAN)
-- Detects the current macOS username for the SSH user
-- Adds `~/.local/bin` to `~/.zshrc` (if not already present)
-- Preserves an existing configuration on later runs
+### 3. One-Time Secure Setup
 
-Open a new terminal and run the one-time SSH setup:
+Open your terminal and run:
 
-```sh
+```bash
 devnode setup
 ```
 
-DevNode will **automatically find your Ubuntu server** on the local network, generate a dedicated SSH key at `~/.ssh/devnode_ed25519`, install its public half on Ubuntu, and save the discovered IP in the configuration. Ubuntu may ask for your account password once. DevNode never stores that password.
+DevNode scans your LAN for your Ubuntu machine, generates an isolated ED25519 keypair at `~/.ssh/devnode_ed25519`, installs the public key on Ubuntu, and pins the remote host fingerprint.
 
-After setup, just run:
+Verify connectivity immediately:
 
-```sh
+```bash
 devnode status
 ```
 
-If the Ubuntu laptop later receives a different IP from the router (DHCP), DevNode will automatically rediscover it.
+---
 
-To install with custom connection parameters (optional — not needed for automatic mode):
+## 💻 CLI Command Reference
 
-```sh
-DEVNODE_HOST=ubuntu.local DEVNODE_USER=myuser DEVNODE_PORT=22 ./scripts/install.sh
+### Server Inspection & Live Telemetry
+
+```bash
+devnode status                  # Interactive live full-screen TUI (1s zero-flicker refresh)
+devnode status --interval 500ms # High-frequency refresh (500ms to 1m)
+devnode status --once           # Headless snapshot output (script & CI friendly)
+devnode hardware                # Detailed inventory of CPU, RAM, NVMe/disks, GPU, and Docker
+devnode network                 # Show listening ports, network interfaces, IP addresses, DNS
+devnode doctor                  # Validate server prerequisites, SSH health, and resources
+devnode monitor                 # Open remote interactive process monitor (btop / htop / top)
+devnode connect                 # Interactive remote shell
+devnode connect --persistent    # Resumable tmux shell that survives laptop sleep or disconnects
+devnode connect --session work  # Connect to or create a named remote session
+```
+
+### Remote Workspace & Projects
+
+Keep project files in `~/projects/<project-name>` on the server and manage them cleanly:
+
+```bash
+devnode projects                # List all remote projects, active Git branches, and dirty status
+devnode project create my-app   # Initialize a new remote directory in ~/projects/my-app
+devnode project shell my-app    # Open interactive shell positioned inside ~/projects/my-app
+
+# Remote Package Management (pnpm / npm / yarn / bun)
+devnode pnpm my-app install     # Run 'pnpm install' remotely inside ~/projects/my-app
+devnode pnpm my-app add express # Add dependency remotely
+devnode run my-app dev          # Run project dev script (defaults to 'dev')
+
+# Context-Aware Folder Inference
+cd ~/Documents/my-app
+devnode pnpm install            # When folder name matches ~/projects/my-app, project arg is inferred!
+```
+
+### Port Forwarding & Tunneling
+
+DevNode tunnels forward remote ports securely to your local loopback address (`127.0.0.1`):
+
+```bash
+# Forward Arbitrary Dev Server Ports
+devnode tunnel 3000             # Forward remote Next.js / Express on port 3000 -> localhost:3000
+devnode tunnel 5173             # Forward remote Vite dev server -> localhost:5173
+devnode tunnel 8080 8081        # Forward remote port 8080 to local port 8081
+
+# Forward Catalog Services by Name
+devnode tunnel postgres         # PostgreSQL (5432)
+devnode tunnel redis            # Redis (6379)
+devnode tunnel mongodb          # MongoDB (27017)
+devnode tunnel portainer        # Portainer Web UI (9443)
+devnode tunnel uptime-kuma      # Uptime Kuma dashboard (3001)
+devnode tunnel jupyter          # Jupyter Notebooks (8888)
+devnode tunnel minio            # MinIO S3 Object Storage (9000)
+devnode tunnel mailpit          # Mailpit UI (8025) & SMTP (1025)
+```
+
+### Service Lifecycle Management
+
+```bash
+devnode install                 # Interactive catalog picker for uninstalled services
+devnode install postgresql      # Install a specific catalog service
+devnode service redis restart   # Control service (start | stop | restart | status)
+devnode services                # List all active systemd units
+devnode docker ps               # Transparent passthrough to remote Docker daemon
+devnode logs -f mailpit         # Stream live logs for a container or systemd unit
 ```
 
 ---
 
-## Commands Overview
+## 🖥️ DevNode Desktop
 
-```text
-# Server Status & Inspection
-devnode status                  # Live full-screen TUI (1s real-time refresh)
-devnode status --interval 500ms # Custom refresh interval (500ms to 1m)
-devnode status --once           # Single-render snapshot (script-friendly)
-devnode hardware                # Show CPU, RAM, storage, GPU, and Docker
-devnode network                 # Show IP addresses, routes, open ports, and DNS
-devnode doctor                  # Validate server prerequisites and resource usage
-devnode monitor                 # Interactive btop, htop, or top
-devnode connect                 # Interactive SSH shell
-devnode connect --persistent    # Resumable tmux shell that survives laptop sleep
-devnode connect --persistent --session work # Resume a named remote shell
-devnode discover                # Find a changed LAN IP by trusted SSH key
-devnode discover --setup        # Find, save, and continue SSH setup
+DevNode includes a standalone GUI application packaged with **Wails v3**:
 
-# Project & Package Management (pnpm / npm / yarn / bun)
-devnode projects                # List projects in ~/projects with package manager & Git branch
-devnode project list            # List projects in ~/projects
-devnode project create <name>   # Initialize a new project directory in ~/projects
-devnode project shell <name>    # Open an interactive shell inside ~/projects/<name>
-devnode pnpm <project> install  # Run 'pnpm install' inside ~/projects/<project> on Ubuntu
-devnode pnpm <project> add pkg  # Install packages remotely (e.g. devnode pnpm my-app add express)
-devnode pnpm install            # Auto-detects project from your current Mac folder name!
-devnode npm <project> <args...> # Run npm inside ~/projects/<project> on Ubuntu
-devnode run <project> [script]  # Shorthand to run project scripts (defaults to 'dev')
-
-# Port & Service Tunneling
-devnode tunnel <PORT>           # Forward any remote dev port to Mac (e.g. 3000, 5173, 8080)
-devnode tunnel <SERVICE> [PORT] # Forward named service (e.g. postgres, mongodb, jupyter)
-
-# Service Management & Discovery
-devnode install                 # Interactive missing service installer
-devnode install <service>       # Install a specific catalog service (e.g. mongodb, jupyter)
-devnode service <name> <action> # Control service (status|start|stop|restart)
-devnode services                # List running systemd units
-devnode docker <arguments...>   # Passthrough Docker commands to Ubuntu
-devnode logs [--follow] <svc>   # View service logs
-devnode postgres <action>       # PostgreSQL database control
-devnode ros <status|nodes>      # Inspect remote ROS 2 environment
-
-# Utilities & Management
-devnode exec <cmd...>           # Run an arbitrary command on the remote host
-devnode config <init|show>      # Initialize or display configuration path
-devnode shutdown [--yes]        # Safely shut down the remote host
+```bash
+# Build desktop binary
+cd desktop
+go build -o bin/devnode-desktop .
 ```
 
-### Persistent shell across laptop sleep
+On macOS, the build generates `DevNode.app` in `desktop/bin/DevNode.app`.
 
-Use `devnode connect --persistent` when commands must keep running on Ubuntu
-while the laptop sleeps, changes networks, or loses Wi-Fi. DevNode attaches to
-a remote `tmux` session named `devnode`. After waking the laptop, run the same
-command again to resume exactly where you left off. Use `--session NAME` for
-separate work sessions.
-
-The laptop cannot keep its SSH network connection active while asleep, but the
-Ubuntu process and terminal continue inside `tmux`. If `tmux` is missing,
-DevNode prints the exact Ubuntu installation command.
+### Desktop Capabilities
+- **Overview Dashboard**: System dials, CPU/memory/disk gauges, real-time bandwidth meter, and active tool versions.
+- **Projects Explorer**: Interactive project cards with package manager integration, 1-click SSH jump commands, and project management.
+- **Services Catalog**: Interactive status badges and comprehensive step-by-step setup guides for all 16+ catalog items with one-click command copy buttons.
+- **Terminal Integration**: Quick copyable SSH connection strings and persistent session launch commands.
+- **LAN Pairing Wizard**: Pair with nearby Ubuntu servers running `devnode-agent`.
+- **Dedicated About Screen**: Detailed client and server environment telemetry and diagnostic information.
 
 ---
 
-## Live Dashboard & Status
-
-```sh
-devnode status
-```
-
-The status dashboard is a responsive full-screen terminal UI:
-- **Zero-Flicker 1s Real-Time Updates**: Displays solid `● ONLINE` connectivity powered by SSH ControlMaster multiplexing (`/tmp/devnode-cm-%C`).
-- **Live Runtimes & Toolchain Detection**: Automatically detects and displays versions for:
-  - `Node.js`, `npm`, and `pnpm` (always visible with active version or `not installed`)
-  - `Yarn`, `Bun`, `Python`, `Go`, `Rust`, `Git`, and `Docker` (shown when detected)
-- **Internet Data Usage Meter**: Shows live download/upload rates and cumulative traffic on the remote server's default network interface(s). Totals reset when the server or interface counters reset.
-- **Keyboard Navigation**:
-  - `1`, `2`, `3` or `Tab` / `←` / `→` — switch between Overview, Services, and Help tabs
-  - `+` / `-` — adjust refresh interval by 500ms steps (down to 500ms)
-  - `r` — trigger an immediate refresh
-  - `s` — after a connection failure, search the old IPv4 `/24` for the same trusted SSH host key
-  - `i` — after repeated failures, enter a replacement IP manually
-  - `v` — review and trust a newly discovered host address while the dashboard is safely suspended
-  - `q` / `Esc` — exit
-
-For scripting or headless output, use:
-```sh
-devnode status --once
-```
-
----
-
-## Remote Projects & Package Management
-
-DevNode lets you keep heavy dependencies and builds on your Ubuntu server while working comfortably from your Mac.
-
-### Project Organization
-Projects are stored in **`~/projects/<project-name>`** on Ubuntu.
-
-```sh
-# Create a new project directory on Ubuntu
-devnode project create web-app
-
-# Run pnpm install remotely
-devnode pnpm web-app install
-
-# Add packages
-devnode pnpm web-app add express dotenv
-devnode pnpm web-app add -D typescript @types/node
-
-# Launch your development server remotely
-devnode run web-app
-# (Equivalent to: devnode pnpm web-app run dev)
-```
-
-### Auto-Detection from Local Directory
-When your current working directory on macOS matches a project name on the server, you can omit the project argument:
-```sh
-cd ~/Documents/web-app
-devnode pnpm install
-devnode pnpm add prisma
-```
-
-### Interactive Project Shell
-```sh
-devnode project shell web-app
-```
-Opens an interactive SSH session already positioned in `~/projects/web-app`.
-
----
-
-## Port Forwarding & Tunneling
-
-DevNode tunnels bind securely to your Mac's loopback address (`127.0.0.1`):
-
-### 1. Development Server Ports
-Forward your Vite, Next.js, or API servers running on Ubuntu directly to your Mac:
-```sh
-devnode tunnel 3000     # Forward Next.js / Express on port 3000
-devnode tunnel 5173     # Forward Vite dev server on port 5173
-devnode tunnel 8080     # Forward API server on port 8080
-```
-Open **`http://localhost:3000`** in your Mac browser.
-
-### 2. Catalog Services
-Forward pre-configured development services:
-```sh
-devnode tunnel mongodb   # Forward MongoDB on 27017
-devnode tunnel jupyter   # Forward Jupyter Notebook on 8888
-devnode tunnel postgres  # Forward PostgreSQL on 5432
-devnode tunnel redis     # Forward Redis on 6379
-devnode tunnel minio     # Forward MinIO S3 on 9000
-devnode tunnel mailpit   # Forward Mailpit UI on 8025
-devnode tunnel portainer # Forward Portainer UI on 9443
-```
-
----
-
-## Service Catalog & Installation
-
-```sh
-devnode install
-```
-
-DevNode provides safe, isolated service installations:
-- **Guarded Confirmation**: Bulk installation is intentionally disabled; services are installed individually after typing the service name to confirm.
-- **Smart Hardware Compatibility**:
-  - **MongoDB**: Automatically checks CPU for AVX instruction support. Selects `mongo:8` on modern AVX-capable CPUs, and automatically falls back to `mongo:4.4` on older Pentium/Celeron CPUs (preventing exit code 132 crashes). Pre-checks port 27017 conflicts before installation.
-  - **Jupyter Notebook**: Runs `jupyter/minimal-notebook:latest` with persistent storage volume on port `8888`.
-  - **Docker Containers**: Auto-detects and cleans up crashed/exited containers when reinstalling.
-  - **Native Packages**: Automatic recipes for Docker Engine, PostgreSQL, Redis, and Mosquitto MQTT.
-  - **Guided Services**: Step-by-step guidance for ROS 2, GitHub Actions Runner, Netdata, LocalStack, and MinIO.
-
----
-
-## Configuration
+## ⚙️ Configuration
 
 Configuration is stored in `~/.config/devnode/config.yaml`:
 
 ```yaml
-# Set to an mDNS hostname (e.g. ubuntu.local) for automatic zero-config LAN discovery,
-# or to a local IPv4 address.
+# Hostname (mDNS e.g. ubuntu.local for zero-config roaming) or IPv4 address
 host: ubuntu.local
 user: opencorex
 port: 22
@@ -240,61 +233,53 @@ connect_timeout: 8
 postgres_service: postgresql
 ```
 
-> **Tip - Zero-Config LAN Setup without Static IPs**:
-> To allow Ubuntu and your laptops to roam freely across any Wi-Fi or local area network without configuring static IPs:
-> 1. Keep Ubuntu on automatic DHCP so it automatically receives internet access, DNS, and a local IP from whatever network it joins.
-> 2. Ensure `avahi-daemon` is active on Ubuntu (`sudo apt install -y avahi-daemon && sudo systemctl enable --now avahi-daemon`).
-> 3. Use `host: <hostname>.local` (e.g. `ubuntu.local`) in your DevNode configuration. macOS resolves `.local` names natively via Bonjour across any LAN or mobile hotspot.
-> 4. If using an IP address, `devnode discover` will automatically search the current connected local network to find and save the updated IP.
+### Environment Overrides
 
-Environment variables can override any setting for automation:
-- `DEVNODE_HOST`
-- `DEVNODE_USER`
-- `DEVNODE_PORT`
-- `DEVNODE_IDENTITY_FILE`
-- `DEVNODE_CONFIG`
+Any configuration option can be temporarily overridden via environment variables:
+
+| Variable | Description |
+| :--- | :--- |
+| `DEVNODE_HOST` | Target hostname or IP address |
+| `DEVNODE_USER` | Remote SSH username |
+| `DEVNODE_PORT` | SSH port (default: `22`) |
+| `DEVNODE_IDENTITY_FILE` | Path to private SSH key |
+| `DEVNODE_CONFIG` | Custom path to config file |
 
 ---
 
-## Ubuntu Server Setup
+## 🔒 Security & Best Practices
 
-Install OpenSSH server on Ubuntu:
+- **Zero-Password Storage**: DevNode never saves or caches passwords. Authentication relies strictly on standard SSH keys.
+- **Scoped Sudo Rules**: Do not configure blanket passwordless sudo. Configure scoped sudo rules via `visudo` on Ubuntu:
+  ```text
+  your-username ALL=(ALL) NOPASSWD: /usr/sbin/shutdown, /bin/systemctl * postgresql*
+  ```
+- **Loopback Binding**: Port tunnels bind exclusively to `127.0.0.1` locally, preventing unwanted exposure across your local network.
 
-```sh
-sudo apt update && sudo apt install -y openssh-server
-sudo systemctl enable --now ssh
-```
+---
 
-For unattended PostgreSQL control and shutdown, configure scoped rules via `visudo`; avoid blanket passwordless sudo:
+## 🧪 Testing & Development
 
-```text
-your-username ALL=(ALL) NOPASSWD: /usr/sbin/shutdown, /bin/systemctl * postgresql*
+Run test suites and linters from the repository root:
+
+```bash
+# Run unit tests across all packages
+make test
+
+# Run Go static analysis
+make vet
+
+# Build local CLI binary to ./bin/devnode
+make build
+
+# Build DevNode Desktop
+cd desktop && task build
 ```
 
 ---
 
-## Development & Testing
+## 📄 License
 
-```sh
-make test   # Run all package unit tests
-make vet    # Run static analysis
-make build  # Build devnode binary to ./bin/devnode
-```
+DevNode is open-source software licensed under the **[MIT License](LICENSE)**.
 
-See the [`docs/`](docs/README.md) folder for complete build, installation, and
-release instructions.
-
-## Secure desktop pairing
-
-Install the pairing helper once on the Ubuntu computer:
-
-```sh
-make install-agent
-devnode-agent pair
-```
-
-Then open **Connection** in DevNode Desktop and select **Scan local network**.
-Compare the code shown on both computers and approve it on Ubuntu. DevNode
-installs only the public key, pins Ubuntu's SSH identity, and reconnects
-automatically when the local IP address changes. See the
-[secure pairing guide](docs/secure-pairing.md).
+Copyright &copy; 2026 [OpenCorex](https://github.com/opencorex-org/devnode).
