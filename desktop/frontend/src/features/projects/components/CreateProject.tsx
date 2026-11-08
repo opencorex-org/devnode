@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { FolderPlus, Loader2, Plus } from "lucide-react";
+import { FolderPlus, Loader2, Plus, RotateCw } from "lucide-react";
 
 import { Card } from "../../../components/ui/Card";
 import { api } from "../../../services/api";
@@ -7,12 +7,16 @@ import { messageOf } from "../../../lib/utils";
 
 interface CreateProjectProps {
   onCreated: () => Promise<void>;
+  onRefresh?: () => Promise<void>;
+  refreshing?: boolean;
   notify: (value: string) => void;
   fail: (value: string) => void;
 }
 
 export function CreateProject({
   onCreated,
+  onRefresh,
+  refreshing = false,
   notify,
   fail,
 }: CreateProjectProps) {
@@ -71,7 +75,7 @@ export function CreateProject({
           </div>
         </div>
 
-        {/* Create Project */}
+        {/* Actions */}
         <div className="flex w-full min-w-0 items-center gap-1.5 sm:w-auto">
           <input
             type="text"
@@ -125,6 +129,29 @@ export function CreateProject({
 
             <span>{adding ? "Creating…" : "Create"}</span>
           </button>
+
+          {onRefresh && (
+            <button
+              type="button"
+              disabled={refreshing}
+              onClick={() => void onRefresh()}
+              title="Refresh projects list"
+              className="
+                inline-flex h-7 w-7 shrink-0
+                items-center justify-center
+                rounded-md border border-border
+                bg-white/5 text-slate-400
+                transition-colors
+                hover:bg-white/10 hover:text-white
+                disabled:cursor-not-allowed disabled:opacity-40
+              "
+            >
+              <RotateCw
+                size={12}
+                className={refreshing ? "animate-spin text-indigo-400" : ""}
+              />
+            </button>
+          )}
         </div>
       </form>
     </Card>

@@ -26,8 +26,20 @@ export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [busy, setBusy] = useState(true);
+  const [projectsLoading, setProjectsLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+
+  const loadProjects = useCallback(async () => {
+    setProjectsLoading(true);
+    try {
+      setProjects(await api.projects());
+    } catch (reason) {
+      setError(messageOf(reason));
+    } finally {
+      setProjectsLoading(false);
+    }
+  }, []);
 
   const loadDashboard = useCallback(async () => {
     setBusy(true);
@@ -76,13 +88,18 @@ export default function App() {
   }, [initialise]);
 
   useEffect(() => {
-    if (page !== "projects" || projects.length) return;
+    if (page === "projects") {
+      void loadProjects();
+    }
+  }, [page, loadProjects]);
 
-    void api
-      .projects()
-      .then(setProjects)
-      .catch((reason) => setError(messageOf(reason)));
-  }, [page, projects.length]);
+  const handleRefresh = useCallback(async () => {
+    if (page === "projects") {
+      await loadProjects();
+    } else {
+      await loadDashboard();
+    }
+  }, [page, loadProjects, loadDashboard]);
 
   const online = Boolean(dashboard && !error);
   const title =
@@ -97,8 +114,8 @@ export default function App() {
       }}
       title={title}
       updatedAt={dashboard ? formatTime(dashboard.updatedAt) : undefined}
-      busy={busy}
-      onRefresh={() => void loadDashboard()}
+      busy={busy || (page === "projects" && projectsLoading)}
+      onRefresh={() => void handleRefresh()}
       online={online}
       target={dashboard?.target}
       host={boot?.config.Host}
@@ -122,7 +139,8 @@ export default function App() {
       {page === "projects" && (
         <ProjectsPage
           projects={projects}
-          reload={async () => setProjects(await api.projects())}
+          loading={projectsLoading}
+          reload={loadProjects}
           notify={setNotice}
           fail={setError}
         />

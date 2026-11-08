@@ -1,5 +1,5 @@
 import type { CatalogItem, ServiceState } from "../../../types";
-import { Loader2, Play, RotateCw, Server, Square } from "lucide-react";
+import { BookOpen, Loader2, Play, RotateCw, Server, Square } from "lucide-react";
 
 import { Card } from "../../../components/ui/Card";
 import { StatusBadge } from "../../../components/ui/Badge";
@@ -10,6 +10,7 @@ interface ServiceCardProps {
   state?: ServiceState;
   working: string;
   onManage: (name: string, action: string) => void;
+  onOpenGuide: (item: CatalogItem) => void;
 }
 
 export function ServiceCard({
@@ -17,6 +18,7 @@ export function ServiceCard({
   state,
   working,
   onManage,
+  onOpenGuide,
 }: ServiceCardProps) {
   const installed = Boolean(state && state.State !== "not-installed");
 
@@ -62,71 +64,89 @@ export function ServiceCard({
 
       {/* Footer */}
       <div className="mt-2 flex min-w-0 items-center justify-between gap-2 border-t border-border pt-2">
-        {/* Metadata */}
-        <div className="flex min-w-0 flex-wrap items-center gap-1">
+        {/* Metadata & Guide Button */}
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           <span className="max-w-full truncate rounded bg-white/5 px-1.5 py-0.5 text-[9px] text-slate-500">
             {item.method}
           </span>
 
-          {item.guided && (
-            <span className="rounded bg-indigo-500/10 px-1.5 py-0.5 text-[9px] text-indigo-400">
-              Guided
-            </span>
-          )}
+          <button
+            type="button"
+            onClick={() => onOpenGuide(item)}
+            className="inline-flex items-center gap-1 rounded bg-indigo-500/10 px-1.5 py-0.5 text-[9px] font-medium text-indigo-400 transition-colors hover:bg-indigo-500/20 hover:text-indigo-300"
+            title="View setup guide and commands"
+          >
+            <BookOpen size={10} />
+            Guide
+          </button>
         </div>
 
-        {/* Compact Action Buttons */}
-        {manageable && (
-          <div className="flex shrink-0 items-center gap-1">
+        {/* Action Buttons */}
+        <div className="flex shrink-0 items-center gap-1">
+          {!manageable && (
             <button
               type="button"
-              disabled={disabled}
-              onClick={() =>
-                onManage(item.name, running ? "restart" : "start")
-              }
-              title={running ? "Restart service" : "Start service"}
-              aria-label={running ? "Restart service" : "Start service"}
-              className="
-                flex h-6 w-6 items-center justify-center
-                rounded-md border border-indigo-500/20
-                bg-indigo-500/10 text-indigo-400
-                transition-colors
-                hover:bg-indigo-500/20
-                disabled:cursor-not-allowed
-                disabled:opacity-40
-              "
+              onClick={() => onOpenGuide(item)}
+              className="inline-flex items-center gap-1 rounded border border-indigo-500/20 bg-indigo-500/10 px-2 py-0.5 text-[10px] font-medium text-indigo-400 transition-colors hover:bg-indigo-500/20 hover:text-indigo-300"
+              title="Open setup guide"
             >
-              {isWorking ? (
-                <Loader2 size={12} className="animate-spin" />
-              ) : running ? (
-                <RotateCw size={12} />
-              ) : (
-                <Play size={12} />
-              )}
+              <BookOpen size={10} />
+              Setup
             </button>
+          )}
 
-            {running && (
+          {manageable && (
+            <>
               <button
                 type="button"
                 disabled={disabled}
-                onClick={() => onManage(item.name, "stop")}
-                title="Stop service"
-                aria-label="Stop service"
+                onClick={() =>
+                  onManage(item.name, running ? "restart" : "start")
+                }
+                title={running ? "Restart service" : "Start service"}
+                aria-label={running ? "Restart service" : "Start service"}
                 className="
                   flex h-6 w-6 items-center justify-center
-                  rounded-md border border-red-500/20
-                  bg-red-500/10 text-red-400
+                  rounded-md border border-indigo-500/20
+                  bg-indigo-500/10 text-indigo-400
                   transition-colors
-                  hover:bg-red-500/20
+                  hover:bg-indigo-500/20
                   disabled:cursor-not-allowed
                   disabled:opacity-40
                 "
               >
-                <Square size={11} fill="currentColor" />
+                {isWorking ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : running ? (
+                  <RotateCw size={12} />
+                ) : (
+                  <Play size={12} />
+                )}
               </button>
-            )}
-          </div>
-        )}
+
+              {running && (
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => onManage(item.name, "stop")}
+                  title="Stop service"
+                  aria-label="Stop service"
+                  className="
+                    flex h-6 w-6 items-center justify-center
+                    rounded-md border border-red-500/20
+                    bg-red-500/10 text-red-400
+                    transition-colors
+                    hover:bg-red-500/20
+                    disabled:cursor-not-allowed
+                    disabled:opacity-40
+                  "
+                >
+                  <Square size={11} fill="currentColor" />
+                </button>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </Card>
   );
