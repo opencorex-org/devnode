@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=DevNode
+Comment=Cross-platform Ubuntu development server manager
+# The Exec line includes %u to pass the URL to the application
+Exec=/usr/local/bin/devnode-desktop %u
+Terminal=false
+Type=Application
+Icon=devnode-desktop
+Categories=Utility;
+StartupWMClass=devnode-desktop
+
+ 
