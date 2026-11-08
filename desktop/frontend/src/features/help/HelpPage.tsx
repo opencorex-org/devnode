@@ -3,6 +3,7 @@ import {
   ArrowRight,
   Cloud,
   Monitor,
+  Network,
   Server,
   ShieldCheck,
   Terminal,
@@ -15,6 +16,48 @@ import { useState } from "react";
 import { APP_VERSION } from "../../version";
 
 type HelpPlatform = "darwin" | "windows" | "linux";
+
+const connectionGuides = [
+  {
+    id: "local",
+    title: "Local LAN",
+    use: "Use when your desktop and Ubuntu server are on the same trusted network.",
+    address: "ubuntu.local or 192.168.1.55",
+    steps: [
+      "Run devnode-agent pair on Ubuntu.",
+      "Open Connection and select Local LAN.",
+      "Scan, compare the six-digit code, and approve on Ubuntu.",
+      "Save and test the connection.",
+    ],
+    works: "Local discovery is used for pairing once. Normal operation then uses the pinned Ubuntu host key and native SSH on port 22.",
+  },
+  {
+    id: "cloudflare",
+    title: "Cloudflare WARP",
+    use: "Use for approved team members connecting from outside the Ubuntu network.",
+    address: "10.77.0.10 private Tunnel route",
+    steps: [
+      "The administrator installs Cloudflare Tunnel on Ubuntu.",
+      "Enroll the team device in Zero Trust and connect WARP.",
+      "Install that member's SSH public key on Ubuntu.",
+      "Select Cloudflare WARP, enter 10.77.0.10, save, and test.",
+    ],
+    works: "Ubuntu opens an outbound Tunnel. WARP routes authorized devices to its private address while DevNode keeps native SSH forwarding.",
+  },
+  {
+    id: "manual",
+    title: "Manual SSH",
+    use: "Use when you already manage a reachable hostname, VPN address, or custom SSH port.",
+    address: "server.example.internal or VPN IP",
+    steps: [
+      "Verify SSH works from the desktop terminal.",
+      "Enter the host, user, port, and identity file.",
+      "Verify the server fingerprint before trusting it.",
+      "Save and test the connection.",
+    ],
+    works: "DevNode calls OpenSSH directly. It preserves SSH authentication, host-key verification, VPN rules, and firewall policy.",
+  },
+] as const;
 
 const clientSetup: Record<
   HelpPlatform,
@@ -183,6 +226,53 @@ export function HelpPage({
           </div>
         </div>
       </Card>
+
+      <section className="min-w-0">
+        <div className="mb-2 flex items-end justify-between gap-2">
+          <div>
+            <h3 className="text-xs font-semibold">Choose a connection method</h3>
+            <p className="mt-0.5 text-[9px] text-slate-500">Each desktop stores its own choice, so local and remote team connections can run at the same time.</p>
+          </div>
+          <span className="text-[9px] text-slate-500">SSH host verification always enabled</span>
+        </div>
+
+        <div className="grid gap-2 lg:grid-cols-3">
+          {connectionGuides.map((guide) => {
+            const Icon = guide.id === "local" ? Network : guide.id === "cloudflare" ? Cloud : Terminal;
+            return (
+              <Card key={guide.id} className="flex min-w-0 flex-col p-3">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-md bg-indigo-500/10 p-1.5 text-indigo-400"><Icon size={13} /></span>
+                  <div>
+                    <h4 className="text-[11px] font-semibold">{guide.title}</h4>
+                    <p className="text-[9px] text-slate-500">{guide.address}</p>
+                  </div>
+                </div>
+                <p className="mt-2 text-[9px] leading-3.5 text-slate-400">{guide.use}</p>
+                <ol className="mt-2 space-y-1.5 border-t border-border pt-2">
+                  {guide.steps.map((step, index) => (
+                    <li key={step} className="flex gap-1.5 text-[9px] leading-3.5 text-slate-300">
+                      <span className="font-semibold text-indigo-400">{index + 1}.</span>
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ol>
+                <div className="mt-2 rounded-md border border-border bg-background/50 p-2">
+                  <p className="text-[9px] font-semibold text-slate-300">How it works</p>
+                  <p className="mt-1 text-[9px] leading-3.5 text-slate-500">{guide.works}</p>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+
+        <div className="mt-2 rounded-md border border-emerald-500/20 bg-emerald-500/5 p-2.5">
+          <p className="text-[10px] font-semibold text-emerald-400">PostgreSQL for every method</p>
+          <p className="mt-1 text-[9px] leading-3.5 text-slate-400">
+            Start <code className="text-slate-200">devnode tunnel postgres 15432</code>, then connect the database client to <code className="text-slate-200">127.0.0.1:15432</code>. PostgreSQL stays private; never open port 5432 on the router.
+          </p>
+        </div>
+      </section>
 
       {/* Platform Selection */}
       <div
