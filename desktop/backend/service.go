@@ -293,12 +293,191 @@ func (s *Service) Catalog() []CatalogItem {
 		if !ok {
 			continue
 		}
+		steps := item.Steps
+		if len(steps) == 0 {
+			steps = serviceGuideSteps(item.Name)
+		}
 		items = append(items, CatalogItem{
 			Name: item.Name, Label: item.Label, Method: item.Method,
-			Description: item.Description, Guided: item.Script == "", Steps: item.Steps,
+			Description: item.Description, Guided: true, Steps: steps,
 		})
 	}
 	return items
+}
+
+func serviceGuideSteps(name string) []string {
+	switch name {
+	case "docker":
+		return []string{
+			"# 1. Install via DevNode CLI",
+			"devnode install docker",
+			"",
+			"# 2. Or manual install on Ubuntu",
+			"sudo apt-get update && sudo apt-get install -y docker.io docker-compose-v2",
+			"sudo systemctl enable --now docker",
+			"sudo usermod -aG docker \"$USER\"",
+			"",
+			"# 3. Verify Docker is running",
+			"docker --version && docker ps",
+		}
+	case "postgresql":
+		return []string{
+			"# 1. Install via DevNode CLI",
+			"devnode install postgresql",
+			"",
+			"# 2. Or manual install on Ubuntu",
+			"sudo apt-get update && sudo apt-get install -y postgresql",
+			"sudo systemctl enable --now postgresql",
+			"",
+			"# 3. Forward PostgreSQL port (5432) to your Mac",
+			"devnode tunnel postgresql",
+			"",
+			"# 4. Connect locally with psql or GUI client",
+			"psql -h 127.0.0.1 -p 5432 -U postgres",
+		}
+	case "redis":
+		return []string{
+			"# 1. Install via DevNode CLI",
+			"devnode install redis",
+			"",
+			"# 2. Or manual install on Ubuntu",
+			"sudo apt-get update && sudo apt-get install -y redis-server",
+			"sudo systemctl enable --now redis-server",
+			"",
+			"# 3. Forward Redis port (6379) to your Mac",
+			"devnode tunnel redis",
+			"",
+			"# 4. Test connection",
+			"redis-cli -h 127.0.0.1 -p 6379 ping",
+		}
+	case "mosquitto":
+		return []string{
+			"# 1. Install via DevNode CLI",
+			"devnode install mosquitto",
+			"",
+			"# 2. Or manual install on Ubuntu",
+			"sudo apt-get update && sudo apt-get install -y mosquitto mosquitto-clients",
+			"sudo systemctl enable --now mosquitto",
+			"",
+			"# 3. Forward MQTT port (1883) to your Mac",
+			"devnode tunnel mosquitto",
+			"",
+			"# 4. Test MQTT pub/sub",
+			"mosquitto_sub -h 127.0.0.1 -p 1883 -t 'test/topic'",
+		}
+	case "portainer":
+		return []string{
+			"# 1. Install via DevNode CLI (requires Docker)",
+			"devnode install portainer",
+			"",
+			"# 2. Or run Portainer container directly",
+			"docker volume create portainer_data",
+			"docker run -d --name portainer --restart=always -p 127.0.0.1:9443:9443 -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:sts",
+			"",
+			"# 3. Forward Portainer to your Mac",
+			"devnode tunnel portainer",
+			"",
+			"# 4. Open web interface in browser",
+			"#    Visit: https://localhost:9443",
+		}
+	case "uptime-kuma":
+		return []string{
+			"# 1. Install via DevNode CLI (requires Docker)",
+			"devnode install uptime-kuma",
+			"",
+			"# 2. Or run Uptime Kuma container directly",
+			"docker volume create uptime-kuma",
+			"docker run -d --name uptime-kuma --restart=unless-stopped -p 127.0.0.1:3001:3001 -v uptime-kuma:/app/data louislam/uptime-kuma:2",
+			"",
+			"# 3. Forward dashboard to your Mac",
+			"devnode tunnel uptime-kuma",
+			"",
+			"# 4. Open in browser",
+			"#    Visit: http://localhost:3001",
+		}
+	case "dozzle":
+		return []string{
+			"# 1. Install via DevNode CLI (requires Docker)",
+			"devnode install dozzle",
+			"",
+			"# 2. Or run Dozzle container directly",
+			"docker volume create dozzle_data",
+			"docker run -d --name dozzle --restart=unless-stopped -p 127.0.0.1:8080:8080 -v /var/run/docker.sock:/var/run/docker.sock:ro -v dozzle_data:/data amir20/dozzle:latest",
+			"",
+			"# 3. Forward log viewer to your Mac",
+			"devnode tunnel dozzle",
+			"",
+			"# 4. Open in browser",
+			"#    Visit: http://localhost:8080",
+		}
+	case "mailpit":
+		return []string{
+			"# 1. Install via DevNode CLI (requires Docker)",
+			"devnode install mailpit",
+			"",
+			"# 2. Or run Mailpit container directly",
+			"docker run -d --name mailpit --restart=unless-stopped -p 127.0.0.1:8025:8025 -p 127.0.0.1:1025:1025 axllent/mailpit:latest",
+			"",
+			"# 3. Forward Mailpit UI to your Mac",
+			"devnode tunnel mailpit",
+			"",
+			"# 4. Access UI & SMTP",
+			"#    Web UI: http://localhost:8025  |  SMTP: localhost:1025",
+		}
+	case "node-red":
+		return []string{
+			"# 1. Install via DevNode CLI (requires Docker)",
+			"devnode install node-red",
+			"",
+			"# 2. Or run Node-RED container directly",
+			"docker volume create node-red-data",
+			"docker run -d --name node-red --restart=unless-stopped -p 127.0.0.1:1880:1880 -v node-red-data:/data nodered/node-red:latest",
+			"",
+			"# 3. Forward editor to your Mac",
+			"devnode tunnel node-red",
+			"",
+			"# 4. Open in browser",
+			"#    Visit: http://localhost:1880",
+		}
+	case "mongodb":
+		return []string{
+			"# 1. Install via DevNode CLI (auto-detects AVX)",
+			"devnode install mongodb",
+			"",
+			"# 2. Or run MongoDB container directly",
+			"docker volume create mongodb-data",
+			"docker run -d --name mongodb --restart=unless-stopped -p 127.0.0.1:27017:27017 -v mongodb-data:/data/db mongo:8",
+			"",
+			"# 3. Forward MongoDB to your Mac",
+			"devnode tunnel mongodb",
+			"",
+			"# 4. Connect locally with mongosh or MongoDB Compass",
+			"mongosh mongodb://127.0.0.1:27017",
+		}
+	case "jupyter":
+		return []string{
+			"# 1. Install via DevNode CLI (requires Docker)",
+			"devnode install jupyter",
+			"",
+			"# 2. Or run Jupyter container directly",
+			"docker volume create jupyter-data",
+			"docker run -d --name jupyter --restart=unless-stopped -p 127.0.0.1:8888:8888 -v jupyter-data:/home/jovyan/work -e JUPYTER_ENABLE_LAB=yes jupyter/minimal-notebook:latest start-notebook.py --NotebookApp.token='' --NotebookApp.password='' --ip=0.0.0.0",
+			"",
+			"# 3. Forward Jupyter to your Mac",
+			"devnode tunnel jupyter",
+			"",
+			"# 4. Open in browser",
+			"#    Visit: http://localhost:8888",
+		}
+	default:
+		return []string{
+			"# 1. Install via DevNode CLI",
+			"devnode install " + name,
+			"",
+			"# 2. Check service status",
+			"devnode status",
+		}
+	}
 }
 
 func (s *Service) ManageService(name, action string) (string, error) {
@@ -392,6 +571,25 @@ func (s *Service) CreateProject(name string) (string, error) {
 	defer cancel()
 	client, stderr := clientFor(cfg)
 	script := `mkdir -p "$HOME/projects/$1" && printf 'Created ~/projects/%s\n' "$1"`
+	out, err := client.Output(ctx, devssh.JoinCommand([]string{"sh", "-c", script, "devnode-project", name}))
+	if err != nil {
+		return "", connectionError(err, stderr.String())
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+func (s *Service) DeleteProject(name string) (string, error) {
+	if !safeName(name) {
+		return "", errors.New("project name may contain only letters, numbers, dots, dashes, and underscores")
+	}
+	cfg, err := loadConfigured()
+	if err != nil {
+		return "", err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel()
+	client, stderr := clientFor(cfg)
+	script := `rm -rf "$HOME/projects/$1" && printf 'Deleted ~/projects/%s\n' "$1"`
 	out, err := client.Output(ctx, devssh.JoinCommand([]string{"sh", "-c", script, "devnode-project", name}))
 	if err != nil {
 		return "", connectionError(err, stderr.String())
