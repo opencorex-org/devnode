@@ -9,7 +9,7 @@ import (
 func TestLoad(t *testing.T) {
 	t.Setenv("DEVNODE_HOST", "")
 	p := filepath.Join(t.TempDir(), "config.yaml")
-	err := os.WriteFile(p, []byte("host: server.local\nuser: dev\nport: 2222\nidentity_file: ''\nconnect_timeout: 12\npostgres_service: postgresql@16-main\n"), 0600)
+	err := os.WriteFile(p, []byte("connection_mode: cloudflare\nhost: server.local\nuser: dev\nport: 2222\nidentity_file: ''\nconnect_timeout: 12\npostgres_service: postgresql@16-main\n"), 0600)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -17,8 +17,17 @@ func TestLoad(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if Target(c) != "dev@server.local" || c.Port != 2222 || c.PostgresService != "postgresql@16-main" {
+	if Target(c) != "dev@server.local" || c.Port != 2222 || c.PostgresService != "postgresql@16-main" || c.ConnectionMode != "cloudflare" {
 		t.Fatalf("unexpected config: %+v", c)
+	}
+}
+
+func TestValidateRejectsUnknownConnectionMode(t *testing.T) {
+	c := Defaults()
+	c.Host = "server.local"
+	c.ConnectionMode = "public"
+	if err := c.Validate(); err == nil {
+		t.Fatal("expected invalid connection mode")
 	}
 }
 
@@ -85,7 +94,6 @@ func TestSaveRoundTrip(t *testing.T) {
 		t.Fatalf("mode = %o", info.Mode().Perm())
 	}
 }
-
 
 func TestNeedsDiscovery(t *testing.T) {
 	for _, h := range []string{"auto", "192.168.x.x", ""} {

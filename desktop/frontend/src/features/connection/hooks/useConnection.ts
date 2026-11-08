@@ -10,6 +10,7 @@ export function useConnection(
   fail: (value: string) => void,
 ) {
   const [form, setForm] = useState<ConnectionInput>(() => ({
+    connectionMode: boot.config.ConnectionMode || "local",
     host: boot.config.Host,
     user: boot.config.User,
     port: boot.config.Port,

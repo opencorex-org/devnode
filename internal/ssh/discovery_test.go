@@ -31,6 +31,7 @@ func TestMatchingHostsRequiresTrustedKey(t *testing.T) {
 
 func TestDiscoverCandidatesIncludesLocalNetworkAndSubnet(t *testing.T) {
 	c := Client{Config: struct {
+		ConnectionMode  string
 		Host            string
 		User            string
 		Port            int
@@ -45,6 +46,7 @@ func TestDiscoverCandidatesIncludesLocalNetworkAndSubnet(t *testing.T) {
 
 	// Should not panic on a .local hostname
 	cLocal := Client{Config: struct {
+		ConnectionMode  string
 		Host            string
 		User            string
 		Port            int

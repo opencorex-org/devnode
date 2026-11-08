@@ -54,6 +54,7 @@ type Bootstrap struct {
 }
 
 type ConnectionInput struct {
+	ConnectionMode  string `json:"connectionMode"`
 	Host            string `json:"host"`
 	User            string `json:"user"`
 	Port            int    `json:"port"`
@@ -125,12 +126,16 @@ func (s *Service) Bootstrap() (Bootstrap, error) {
 
 func (s *Service) SaveConnection(input ConnectionInput) (ConnectionResult, error) {
 	cfg := config.Config{
+		ConnectionMode:  strings.TrimSpace(input.ConnectionMode),
 		Host:            strings.TrimSpace(input.Host),
 		User:            strings.TrimSpace(input.User),
 		Port:            input.Port,
 		IdentityFile:    strings.TrimSpace(input.IdentityFile),
 		ConnectTimeout:  input.ConnectTimeout,
 		PostgresService: strings.TrimSpace(input.PostgresService),
+	}
+	if cfg.ConnectionMode == "" {
+		cfg.ConnectionMode = "local"
 	}
 	if cfg.Host == "" {
 		cfg.Host = "auto"
@@ -147,7 +152,18 @@ func (s *Service) SaveConnection(input ConnectionInput) (ConnectionResult, error
 	if err := config.Save(config.DefaultPath(), cfg); err != nil {
 		return ConnectionResult{}, fmt.Errorf("save connection: %w", err)
 	}
-	return ConnectionResult{Target: config.Target(cfg), Message: "Connection settings saved."}, nil
+	return ConnectionResult{Target: config.Target(cfg), Message: "Connection settings saved for " + connectionModeLabel(cfg.ConnectionMode) + "."}, nil
+}
+
+func connectionModeLabel(mode string) string {
+	switch mode {
+	case "cloudflare":
+		return "Cloudflare WARP"
+	case "manual":
+		return "manual SSH"
+	default:
+		return "local LAN"
+	}
 }
 
 func (s *Service) DiscoverPairingServers() ([]pairing.Server, error) {
@@ -224,7 +240,7 @@ func (s *Service) PairStatus(requestID string) (PairProgress, error) {
 		if current, _, loadErr := loadOrDefault(config.DefaultPath()); loadErr == nil {
 			cfg = current
 		}
-		cfg.Host, cfg.User, cfg.Port, cfg.IdentityFile = session.Server.Address, response.ServerUser, 22, session.IdentityPath
+		cfg.ConnectionMode, cfg.Host, cfg.User, cfg.Port, cfg.IdentityFile = "local", session.Server.Address, response.ServerUser, 22, session.IdentityPath
 		if err := config.Save(config.DefaultPath(), cfg); err != nil {
 			return PairProgress{}, fmt.Errorf("save paired connection: %w", err)
 		}

@@ -1,6 +1,7 @@
 export type Page = "overview" | "projects" | "services" | "terminal" | "settings" | "help" | "about";
 
 export type Config = {
+  ConnectionMode: ConnectionMode;
   Host: string;
   User: string;
   Port: number;
@@ -8,6 +9,8 @@ export type Config = {
   ConnectTimeout: number;
   PostgresService: string;
 };
+
+export type ConnectionMode = "local" | "cloudflare" | "manual";
 
 export type ToolCheck = { name: string; available: boolean; path: string };
 
@@ -21,6 +24,7 @@ export type Bootstrap = {
 };
 
 export type ConnectionInput = {
+  connectionMode: ConnectionMode;
   host: string;
   user: string;
   port: number;

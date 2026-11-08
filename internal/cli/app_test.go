@@ -147,7 +147,8 @@ func TestPersistentShellScriptChecksTmux(t *testing.T) {
 func TestSaveDiscoveredHostPreservesConfig(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.yaml")
 	original := config.Config{
-		Host: "192.168.1.17", User: "opencorex", Port: 2222,
+		ConnectionMode: "local",
+		Host:           "192.168.1.17", User: "opencorex", Port: 2222,
 		IdentityFile: "/tmp/devnode-key", ConnectTimeout: 12, PostgresService: "postgresql@16-main",
 	}
 	updated, err := saveDiscoveredHost(path, original, "192.168.1.19")

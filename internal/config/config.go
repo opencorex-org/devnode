@@ -12,6 +12,7 @@ import (
 )
 
 const Example = `# DevNode configuration
+connection_mode: local
 host: auto
 user: opencorex
 port: 22
@@ -21,6 +22,7 @@ postgres_service: postgresql
 `
 
 type Config struct {
+	ConnectionMode  string
 	Host            string
 	User            string
 	Port            int
@@ -30,7 +32,7 @@ type Config struct {
 }
 
 func Defaults() Config {
-	return Config{Port: 22, ConnectTimeout: 8, PostgresService: "postgresql"}
+	return Config{ConnectionMode: "local", Port: 22, ConnectTimeout: 8, PostgresService: "postgresql"}
 }
 
 func DefaultPath() string {
@@ -53,14 +55,17 @@ func DefaultPath() string {
 }
 
 func Save(path string, c Config) error {
+	if c.ConnectionMode == "" {
+		c.ConnectionMode = "local"
+	}
 	if err := c.Validate(); err != nil {
 		return err
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return fmt.Errorf("create config directory: %w", err)
 	}
-	data := fmt.Sprintf("# DevNode configuration\nhost: %s\nuser: %s\nport: %d\nidentity_file: %s\nconnect_timeout: %d\npostgres_service: %s\n",
-		c.Host, c.User, c.Port, strconv.Quote(c.IdentityFile), c.ConnectTimeout, c.PostgresService)
+	data := fmt.Sprintf("# DevNode configuration\nconnection_mode: %s\nhost: %s\nuser: %s\nport: %d\nidentity_file: %s\nconnect_timeout: %d\npostgres_service: %s\n",
+		c.ConnectionMode, c.Host, c.User, c.Port, strconv.Quote(c.IdentityFile), c.ConnectTimeout, c.PostgresService)
 	tmp, err := os.CreateTemp(filepath.Dir(path), ".config-*")
 	if err != nil {
 		return fmt.Errorf("create temporary config: %w", err)
@@ -118,6 +123,8 @@ func Load(path string) (Config, error) {
 		}
 		key, value = strings.TrimSpace(key), trimValue(value)
 		switch key {
+		case "connection_mode":
+			cfg.ConnectionMode = value
 		case "host":
 			cfg.Host = value
 		case "user":
@@ -147,6 +154,9 @@ func Load(path string) (Config, error) {
 }
 
 func (c Config) Validate() error {
+	if !ValidConnectionMode(c.ConnectionMode) {
+		return fmt.Errorf("connection_mode must be local, cloudflare, or manual")
+	}
 	if strings.TrimSpace(c.Host) == "" {
 		return errors.New("server host is not configured; run `devnode config init` or set DEVNODE_HOST")
 	}
@@ -166,6 +176,12 @@ func (c Config) Validate() error {
 		return fmt.Errorf("invalid postgres_service %q", c.PostgresService)
 	}
 	return nil
+}
+
+func ValidConnectionMode(mode string) bool {
+	// Empty is accepted for in-memory configs created by older callers. Save
+	// normalizes it to local, and Load always starts from Defaults.
+	return mode == "" || mode == "local" || mode == "cloudflare" || mode == "manual"
 }
 
 func SafeUnit(s string) bool {

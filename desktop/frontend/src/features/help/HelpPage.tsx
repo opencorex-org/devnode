@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   ArrowRight,
+  Cloud,
   Monitor,
   Server,
   ShieldCheck,
@@ -246,6 +247,35 @@ export function HelpPage({
           ))}
         </div>
       </section>
+
+      <Card className="border-cyan-500/20 bg-gradient-to-br from-cyan-950/20 to-surface p-3">
+        <div className="mb-3 flex items-start gap-2">
+          <Cloud size={15} className="mt-0.5 shrink-0 text-cyan-400" />
+          <PanelTitle
+            title="Remote access with Cloudflare WARP"
+            subtitle="Private SSH and PostgreSQL without router port forwarding"
+          />
+        </div>
+
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+          {[
+            ["1", "Install the connector", "Create a remotely managed Tunnel, then run the Cloudflare-provided command on Ubuntu: sudo cloudflared service install <TUNNEL_TOKEN>"],
+            ["2", "Route one private IP", "Assign 10.77.0.10/32 to Ubuntu loopback and add the same CIDR under the Tunnel private-network routes."],
+            ["3", "Authorize devices", "Enroll the desktop in Cloudflare WARP. Require identity, MFA, and an approved device in Zero Trust policies."],
+            ["4", "Connect DevNode", "Select Cloudflare WARP under Connection, enter 10.77.0.10, save, and test. Keep router ports 22 and 5432 closed."],
+          ].map(([number, title, text]) => (
+            <div key={number} className="rounded-md border border-border bg-background/50 p-2.5">
+              <span className="text-[9px] font-semibold text-cyan-400">REMOTE {number}</span>
+              <h3 className="mt-1 text-[10px] font-semibold">{title}</h3>
+              <p className="mt-1 text-[9px] leading-3.5 text-slate-400">{text}</p>
+            </div>
+          ))}
+        </div>
+
+        <p className="mt-2 text-[9px] leading-3.5 text-slate-500">
+          PostgreSQL should listen only on localhost and the private overlay address. Use DevNode&apos;s PostgreSQL SSH tunnel for database clients; never publish port 5432 directly.
+        </p>
+      </Card>
 
       {/* Troubleshooting */}
       <Card className="p-3">
