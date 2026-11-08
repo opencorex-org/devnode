@@ -171,6 +171,8 @@ tasks:
         fi
       - cp "{{.BIN_DIR}}/{{.APP_NAME}}" "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/MacOS"
       - cp build/darwin/Info.plist "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents"
+      - rm -rf "{{.BIN_DIR}}/DevNode.app"
+      - cp -R "{{.BIN_DIR}}/{{.APP_NAME}}.app" "{{.BIN_DIR}}/DevNode.app"
       - task: '{{if eq OS "darwin"}}codesign:adhoc{{else}}codesign:skip{{end}}'
 
   codesign:adhoc:
@@ -180,6 +182,9 @@ tasks:
       - xattr -cr "{{.BIN_DIR}}/{{.APP_NAME}}.app"
       - codesign --force --deep --sign - "{{.BIN_DIR}}/{{.APP_NAME}}.app"
       - codesign --verify --deep --strict "{{.BIN_DIR}}/{{.APP_NAME}}.app"
+      - xattr -cr "{{.BIN_DIR}}/DevNode.app"
+      - codesign --force --deep --sign - "{{.BIN_DIR}}/DevNode.app"
+      - codesign --verify --deep --strict "{{.BIN_DIR}}/DevNode.app"
 
   codesign:skip:
     summary: Skips codesigning when cross-compiling
@@ -190,20 +195,21 @@ tasks:
   run:
     cmds:
       - wails3 tool prepare-macos-output --dir "{{.BIN_DIR}}"
-      - test -n "{{.BIN_DIR}}" && test -n "{{.APP_NAME}}" && rm -rf -- "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app"
-      - mkdir -p "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS"
-      - mkdir -p "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/Resources"
-      - cp build/darwin/icons.icns "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/Resources"
+      - test -n "{{.BIN_DIR}}" && rm -rf -- "{{.BIN_DIR}}/DevNode.app" "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app"
+      - mkdir -p "{{.BIN_DIR}}/DevNode.app/Contents/MacOS"
+      - mkdir -p "{{.BIN_DIR}}/DevNode.app/Contents/Resources"
+      - cp build/darwin/icons.icns "{{.BIN_DIR}}/DevNode.app/Contents/Resources"
       - |
         if [ -f build/darwin/Assets.car ]; then
-          cp build/darwin/Assets.car "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/Resources"
+          cp build/darwin/Assets.car "{{.BIN_DIR}}/DevNode.app/Contents/Resources"
         fi
-      - cp "{{.BIN_DIR}}/{{.APP_NAME}}" "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS"
-      - cp "build/darwin/Info.dev.plist" "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/Info.plist"
-      - xattr -cr "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app"
-      - codesign --force --deep --sign - "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app"
-      - codesign --verify --deep --strict "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app"
-      - '"{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS/{{.APP_NAME}}"'
+      - cp "{{.BIN_DIR}}/{{.APP_NAME}}" "{{.BIN_DIR}}/DevNode.app/Contents/MacOS/{{.APP_NAME}}"
+      - cp "build/darwin/Info.dev.plist" "{{.BIN_DIR}}/DevNode.app/Contents/Info.plist"
+      - xattr -cr "{{.BIN_DIR}}/DevNode.app"
+      - codesign --force --deep --sign - "{{.BIN_DIR}}/DevNode.app"
+      - codesign --verify --deep --strict "{{.BIN_DIR}}/DevNode.app"
+      - cp -R "{{.BIN_DIR}}/DevNode.app" "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app"
+      - '"{{.BIN_DIR}}/DevNode.app/Contents/MacOS/{{.APP_NAME}}"'
 
   sign:
     summary: Signs the application bundle with Developer ID

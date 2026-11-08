@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"embed"
 	"log"
 
@@ -11,14 +12,22 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+//go:embed build/appicon.png
+var appIcon []byte
+
 func main() {
 	app := application.New(application.Options{
 		Name: "DevNode",
+		Icon: appIcon,
 		Services: []application.Service{
 			application.NewService(backend.New()),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
+		},
+		Linux: application.LinuxOptions{
+			ProgramName:   "devnode-desktop",
+			ApplicationID: "com.lahiruudayakumara.devnode",
 		},
 	})
 
@@ -31,6 +40,9 @@ func main() {
 		MinHeight:        680,
 		StartState:       application.WindowStateNormal,
 		BackgroundColour: application.NewRGB(9, 14, 24),
+		Linux: application.LinuxWindow{
+			Icon: appIcon,
+		},
 	})
 
 	if err := app.Run(); err != nil {
