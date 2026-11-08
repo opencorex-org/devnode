@@ -19,6 +19,7 @@ import {
 import { Card } from "../../components/ui/Card";
 import logo from "../../assets/logo.png";
 import { useState } from "react";
+import { APP_VERSION } from "../../version";
 
 interface AboutPageProps {
   boot: Bootstrap | null;
@@ -60,7 +61,7 @@ export function AboutPage({ boot, dashboard }: AboutPageProps) {
                 DevNode
               </h1>
               <span className="rounded-full border border-indigo-500/30 bg-indigo-500/15 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-indigo-300">
-                v0.1.0-beta
+                v{boot?.version ?? APP_VERSION}
               </span>
               <span className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-400">
                 {boot?.platform ? boot.platform.toUpperCase() : "DESKTOP"}

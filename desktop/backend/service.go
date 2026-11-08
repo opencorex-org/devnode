@@ -21,6 +21,7 @@ import (
 	"github.com/opencorex-org/devnode/internal/pairing"
 	devssh "github.com/opencorex-org/devnode/internal/ssh"
 	"github.com/opencorex-org/devnode/internal/status"
+	"github.com/opencorex-org/devnode/internal/version"
 )
 
 const requestTimeout = 20 * time.Second
@@ -44,6 +45,7 @@ type ToolCheck struct {
 }
 
 type Bootstrap struct {
+	Version    string        `json:"version"`
 	Platform   string        `json:"platform"`
 	ConfigPath string        `json:"configPath"`
 	Configured bool          `json:"configured"`
@@ -108,6 +110,7 @@ func (s *Service) Bootstrap() (Bootstrap, error) {
 		return Bootstrap{}, err
 	}
 	return Bootstrap{
+		Version:    version.Current,
 		Platform:   runtime.GOOS,
 		ConfigPath: path,
 		Configured: configured,

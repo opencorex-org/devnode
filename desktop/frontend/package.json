@@ -7,7 +7,9 @@
     "dev": "vite",
     "build:dev": "tsc --noEmit && vite build --mode development",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "version:sync": "node ../../scripts/set-version.mjs",
+    "version:check": "node ../../scripts/set-version.mjs --check"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.5",

@@ -20,9 +20,10 @@ import (
 	"github.com/opencorex-org/devnode/internal/status"
 	devtui "github.com/opencorex-org/devnode/internal/tui"
 	"github.com/opencorex-org/devnode/internal/ui"
+	"github.com/opencorex-org/devnode/internal/version"
 )
 
-const Version = "0.5.0"
+const Version = version.Current
 
 const hardwareScript = `printf '%s\n' '========== CPU =========='; lscpu | grep -E 'Model name|CPU\(s\)|Architecture'; printf '%s\n' '========== RAM =========='; free -h; printf '%s\n' '========== STORAGE =========='; lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS; printf '%s\n' '========== DISK SPACE =========='; df -h /; printf '%s\n' '========== GPU =========='; lspci | grep -Ei 'vga|3d|display' || printf '%s\n' 'Not detected'; printf '%s\n' '========== DOCKER =========='; docker --version 2>/dev/null || printf '%s\n' 'Not installed'`
 

@@ -172,7 +172,10 @@ export default function App() {
       )}
 
       {page === "help" && (
-        <HelpPage initialPlatform={boot?.platform ?? "darwin"} />
+        <HelpPage
+          initialPlatform={boot?.platform ?? "darwin"}
+          version={boot?.version}
+        />
       )}
 
       {page === "about" && (

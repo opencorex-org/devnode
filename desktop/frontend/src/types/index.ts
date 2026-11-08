@@ -12,6 +12,7 @@ export type Config = {
 export type ToolCheck = { name: string; available: boolean; path: string };
 
 export type Bootstrap = {
+  version: string;
   platform: string;
   configPath: string;
   configured: boolean;

@@ -11,6 +11,7 @@ import { Card } from "../../components/ui/Card";
 import { HelpStep } from "./components/HelpStep";
 import { PanelTitle } from "../../components/shared/PanelTitle";
 import { useState } from "react";
+import { APP_VERSION } from "../../version";
 
 type HelpPlatform = "darwin" | "windows" | "linux";
 
@@ -63,8 +64,10 @@ const troubleshooting = [
 
 export function HelpPage({
   initialPlatform,
+  version = APP_VERSION,
 }: {
   initialPlatform: string;
+  version?: string;
 }) {
   const detected: HelpPlatform =
     initialPlatform === "windows"
@@ -126,7 +129,7 @@ export function HelpPage({
       <Card className="overflow-hidden border-indigo-500/20 bg-gradient-to-br from-indigo-950/40 to-surface p-3">
         <div className="mb-2 inline-flex items-center gap-1 rounded-full bg-indigo-500/10 px-2 py-0.5 text-[9px] font-semibold text-indigo-400">
           <ShieldCheck size={11} />
-          CONNECTION GUIDE
+          DEVNODE v{version} · CONNECTION GUIDE
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3">

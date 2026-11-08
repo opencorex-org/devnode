@@ -1,0 +1,93 @@
+name: Verify version and release
+
+on:
+  pull_request:
+    paths:
+      - VERSION
+      - scripts/set-version.mjs
+      - scripts/set-version.sh
+      - .github/workflows/release.yml
+      - internal/version/**
+      - desktop/frontend/package.json
+      - desktop/frontend/package-lock.json
+      - desktop/frontend/src/version.ts
+      - desktop/build/**
+  push:
+    branches: [main]
+    paths:
+      - VERSION
+      - scripts/set-version.mjs
+      - scripts/set-version.sh
+      - .github/workflows/release.yml
+      - internal/version/**
+      - desktop/frontend/package.json
+      - desktop/frontend/package-lock.json
+      - desktop/frontend/src/version.ts
+      - desktop/build/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            desktop/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/frontend/package-lock.json
+
+      - name: Verify synchronized version
+        run: node scripts/set-version.mjs --check
+
+      - name: Test Go modules
+        run: |
+          go test ./...
+          (cd desktop && go test ./...)
+
+      - name: Build frontend
+        working-directory: desktop/frontend
+        run: |
+          npm ci
+          npm run build
+
+  release:
+    if: github.event_name != 'pull_request'
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create missing GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(tr -d '[:space:]' < VERSION)
+          tag="v${version}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists; nothing to do."
+            exit 0
+          fi
+          gh release create "$tag" \
+            --target "$GITHUB_SHA" \
+            --title "DevNode $tag" \
+            --generate-notes

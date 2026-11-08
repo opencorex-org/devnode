@@ -109,6 +109,19 @@ The installer automatically:
 - Configures `~/.config/devnode/config.yaml` with automatic LAN discovery (`host: auto`).
 - Configures user shell profile paths (`~/.zshrc` / `~/.bashrc`).
 
+### Release version
+
+`VERSION` is the single source of truth for the CLI, desktop UI, package metadata,
+and installers. Update every generated version field with one command:
+
+```bash
+make version VERSION=0.6.0
+make version-check
+```
+
+After the synchronized change reaches `main`, GitHub Actions tests the project and
+creates `v0.6.0` only if that release does not already exist.
+
 ### 3. One-Time Secure Setup
 
 Open your terminal and run:
