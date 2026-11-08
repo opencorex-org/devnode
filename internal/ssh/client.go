@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -47,6 +48,45 @@ func (c Client) Output(ctx context.Context, script string) ([]byte, error) {
 	return out, nil
 }
 
+// OutputBatch runs a read-only SSH query without allowing SSH to prompt on the
+// terminal. This is intended for background jobs such as the live dashboard,
+// where SSH and the TUI must never compete for stdin or write directly to the
+// screen.
+func (c Client) OutputBatch(ctx context.Context, script string) ([]byte, error) {
+	args := append(c.baseArgs(true), "-o", "StrictHostKeyChecking=yes", config.Target(c.Config), script)
+	cmd := exec.CommandContext(ctx, "ssh", args...)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		detail := strings.TrimSpace(stderr.String())
+		if detail != "" {
+			return nil, fmt.Errorf("ssh: %w: %s", err, detail)
+		}
+		return nil, fmt.Errorf("ssh: %w", err)
+	}
+	return out, nil
+}
+
+// HostCheckCommand returns an interactive, no-op SSH command. Bubble Tea runs
+// this while its TUI is suspended so OpenSSH can safely own the terminal while
+// the user reviews and accepts a new host key.
+func (c Client) HostCheckCommand(ctx context.Context) *exec.Cmd {
+	args := append(c.baseArgs(false), config.Target(c.Config), "true")
+	return exec.CommandContext(ctx, "ssh", args...)
+}
+
+func IsHostVerificationError(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "host key verification failed") ||
+		strings.Contains(message, "no ed25519 host key is known") ||
+		strings.Contains(message, "no ecdsa host key is known") ||
+		strings.Contains(message, "no rsa host key is known")
+}
+
 func (c Client) Forward(ctx context.Context, localPort, remotePort int) error {
 	forward := fmt.Sprintf("127.0.0.1:%d:127.0.0.1:%d", localPort, remotePort)
 	args := append(c.baseArgs(false), "-N", "-L", forward, config.Target(c.Config))
@@ -65,6 +105,9 @@ func (c Client) baseArgs(batch bool) []string {
 		"-o", "ControlMaster=auto",
 		"-o", "ControlPath=/tmp/devnode-cm-%C",
 		"-o", "ControlPersist=60s",
+		"-o", "ServerAliveInterval=30",
+		"-o", "ServerAliveCountMax=3",
+		"-o", "TCPKeepAlive=yes",
 	}
 	if batch {
 		args = append(args, "-o", "BatchMode=yes")

@@ -36,20 +36,34 @@ type fetchMsg struct {
 	generation int
 }
 type tickMsg struct{ generation int }
+type hostVerifiedMsg struct{ err error }
+type discoveryMsg struct {
+	host string
+	err  error
+}
 
 type model struct {
-	ctx           context.Context
-	client        devssh.Client
-	cfg           config.Config
-	target        string
-	interval      time.Duration
-	generation    int
-	width, height int
-	tab           int
-	loading       bool
-	snapshot      status.Snapshot
-	err           error
-	updated       time.Time
+	ctx            context.Context
+	client         devssh.Client
+	cfg            config.Config
+	target         string
+	interval       time.Duration
+	generation     int
+	width, height  int
+	tab            int
+	loading        bool
+	snapshot       status.Snapshot
+	netRXRate      float64
+	netTXRate      float64
+	err            error
+	updated        time.Time
+	failedAttempts int
+	editingHost    bool
+	hostInput      string
+	hostInputErr   error
+	verifyHostKey  bool
+	searchingHost  bool
+	searchErr      error
 }
 
 func Run(ctx context.Context, client devssh.Client, cfg config.Config, interval time.Duration, in io.Reader, out io.Writer) error {
@@ -63,7 +77,7 @@ func (m model) Init() tea.Cmd { return m.fetchCmd() }
 func (m model) fetchCmd() tea.Cmd {
 	generation := m.generation
 	return func() tea.Msg {
-		out, err := m.client.Output(m.ctx, status.Script(m.cfg.PostgresService))
+		out, err := m.client.OutputBatch(m.ctx, status.Script(m.cfg.PostgresService))
 		if err != nil {
 			return fetchMsg{err: err, at: time.Now(), generation: generation}
 		}
@@ -77,18 +91,81 @@ func (m model) tickCmd() tea.Cmd {
 	return tea.Tick(m.interval, func(time.Time) tea.Msg { return tickMsg{generation: generation} })
 }
 
+func (m model) discoveryCmd() tea.Cmd {
+	return func() tea.Msg {
+		host, err := m.client.DiscoverMovedHost(m.ctx)
+		return discoveryMsg{host: host, err: err}
+	}
+}
+
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 	case tea.KeyPressMsg:
+		if m.editingHost {
+			switch msg.String() {
+			case "enter":
+				candidate := m.cfg
+				candidate.Host = strings.TrimSpace(m.hostInput)
+				if err := candidate.Validate(); err != nil {
+					m.hostInputErr = err
+					return m, nil
+				}
+				m.cfg = candidate
+				m.client.Config = candidate
+				m.target = config.Target(candidate)
+				m.editingHost, m.hostInputErr = false, nil
+				m.verifyHostKey = false
+				m.searchErr = nil
+				m.failedAttempts = 0
+				m.generation++
+				m.loading = true
+				return m, m.fetchCmd()
+			case "backspace":
+				runes := []rune(m.hostInput)
+				if len(runes) > 0 {
+					m.hostInput = string(runes[:len(runes)-1])
+				}
+				m.hostInputErr = nil
+				return m, nil
+			case "esc", "ctrl+c":
+				m.editingHost, m.hostInputErr = false, nil
+				return m, nil
+			default:
+				if text := tea.Key(msg).Text; text != "" {
+					m.hostInput += text
+					m.hostInputErr = nil
+				}
+				return m, nil
+			}
+		}
 		switch msg.String() {
 		case "q", "ctrl+c", "esc":
 			return m, tea.Quit
 		case "r":
+			m.searchErr = nil
 			m.generation++
 			m.loading = true
 			return m, m.fetchCmd()
+		case "v":
+			if m.verifyHostKey {
+				return m, tea.ExecProcess(m.client.HostCheckCommand(m.ctx), func(err error) tea.Msg {
+					return hostVerifiedMsg{err: err}
+				})
+			}
+		case "i":
+			if m.failedAttempts >= 5 || m.verifyHostKey || m.searchErr != nil {
+				m.editingHost = true
+				m.hostInput, m.hostInputErr = "", nil
+			}
+		case "s":
+			if (m.err != nil || m.searchErr != nil) && !m.searchingHost {
+				m.generation++
+				m.searchingHost = true
+				m.searchErr = nil
+				return m, m.discoveryCmd()
+			}
 		case "tab", "right", "l":
 			m.tab = (m.tab + 1) % 3
 		case "shift+tab", "left", "h":
@@ -116,11 +193,64 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.generation != m.generation {
 			return m, nil
 		}
+		previousUpdate := m.updated
 		m.loading, m.err, m.updated = false, msg.err, msg.at
-		if msg.err == nil {
+		if msg.err != nil {
+			m.failedAttempts++
+			m.verifyHostKey = devssh.IsHostVerificationError(msg.err)
+			if m.verifyHostKey {
+				return m, nil
+			}
+			if m.failedAttempts >= 5 {
+				return m, nil
+			}
+		} else {
+			m.failedAttempts = 0
+			m.verifyHostKey = false
+			m.netRXRate, m.netTXRate = 0, 0
+			elapsed := msg.at.Sub(previousUpdate).Seconds()
+			if m.snapshot.NetAvailable && msg.snapshot.NetAvailable && elapsed > 0 {
+				if msg.snapshot.NetRX >= m.snapshot.NetRX {
+					m.netRXRate = float64(msg.snapshot.NetRX-m.snapshot.NetRX) / elapsed
+				}
+				if msg.snapshot.NetTX >= m.snapshot.NetTX {
+					m.netTXRate = float64(msg.snapshot.NetTX-m.snapshot.NetTX) / elapsed
+				}
+			}
 			m.snapshot = msg.snapshot
 		}
 		return m, m.tickCmd()
+	case hostVerifiedMsg:
+		if msg.err != nil {
+			m.err = fmt.Errorf("host verification was not completed: %w", msg.err)
+			return m, nil
+		}
+		m.verifyHostKey = false
+		m.failedAttempts = 0
+		m.generation++
+		m.loading = true
+		return m, m.fetchCmd()
+	case discoveryMsg:
+		m.searchingHost = false
+		if msg.err != nil {
+			m.searchErr = msg.err
+			return m, nil
+		}
+		candidate := m.cfg
+		candidate.Host = msg.host
+		if err := candidate.Validate(); err != nil {
+			m.searchErr = err
+			return m, nil
+		}
+		m.cfg = candidate
+		m.client.Config = candidate
+		m.target = config.Target(candidate)
+		m.failedAttempts = 0
+		m.verifyHostKey = false
+		m.searchErr = nil
+		m.generation++
+		m.loading = true
+		return m, m.fetchCmd()
 	case tickMsg:
 		if msg.generation != m.generation {
 			return m, nil
@@ -154,8 +284,12 @@ func (m model) View() tea.View {
 		tabs[i] = style.Render(tabs[i])
 	}
 	body := ""
-	if m.err != nil && m.snapshot.Host == "" {
-		body = errorView(m.err)
+	if m.searchingHost {
+		body = titleStyle.Render("Searching local network…") + "\n\n" +
+			fmt.Sprintf("Looking for the trusted SSH key near %s on port %d.", m.cfg.Host, m.cfg.Port) + "\n\n" +
+			mutedStyle.Render("Only an exact known-host key match will be used.")
+	} else if m.searchErr != nil || m.err != nil && (m.snapshot.Host == "" || m.failedAttempts >= 5 || m.verifyHostKey) {
+		body = m.errorView()
 	} else {
 		switch m.tab {
 		case 0:
@@ -181,6 +315,11 @@ func (m model) overview(width int) string {
 	s := m.snapshot
 	identity := fmt.Sprintf("%s  %s  •  %s  •  up %s", titleStyle.Render(fallback(s.Host)), mutedStyle.Render(fallback(s.IP)), fallback(s.OS), fallback(s.Uptime))
 	resources := metric("CPU", s.CPU, "", width) + "\n" + metric("MEM", s.Memory, s.MemoryTotal, width) + "\n" + metric("DISK", s.Disk, s.DiskTotal, width)
+	if s.NetAvailable {
+		resources += "\n" + networkUsage(s, m.netRXRate, m.netTXRate)
+	} else {
+		resources += "\nNET   " + mutedStyle.Render("unavailable")
+	}
 	running, installed, missing := 0, 0, 0
 	for _, svc := range s.Services {
 		switch svc.State {
@@ -204,6 +343,14 @@ func (m model) overview(width int) string {
 	}
 	return out + "\n\n" + summary + "\n\n" + titleStyle.Render("ESSENTIAL SERVICES") + "\n" + strings.Join(rows, "\n")
 }
+
+func networkUsage(s status.Snapshot, rxRate, txRate float64) string {
+	return fmt.Sprintf("NET   %s  %s total  %s  %s total",
+		goodStyle.Render("↓ "+status.FormatBytes(uint64(rxRate))+"/s"), status.FormatBytes(s.NetRX),
+		cyanStyle("↑ "+status.FormatBytes(uint64(txRate))+"/s"), status.FormatBytes(s.NetTX))
+}
+
+func cyanStyle(s string) string { return lipgloss.NewStyle().Foreground(cyan).Render(s) }
 
 func (m model) toolchain(width int) string {
 	tools := status.DisplayTools(m.snapshot.Tools)
@@ -287,11 +434,35 @@ func serviceRow(label string, svc status.Service, width int) string {
 	return fmt.Sprintf("%s %-16s%s%s  %s", icon, label, strings.Repeat(" ", gap), stateStyle.Render(strings.ToUpper(state)), mutedStyle.Render("["+source+"]"))
 }
 
-func errorView(err error) string {
-	return badStyle.Render("Unable to reach the server") + "\n\n" + err.Error() + "\n\n" + mutedStyle.Render("DevNode will retry automatically. Press r to retry now.")
+func (m model) errorView() string {
+	if m.searchErr != nil {
+		return badStyle.Render("Automatic IP search did not find the server") + "\n\n" +
+			m.searchErr.Error() + "\n\n" +
+			titleStyle.Render("[s] Search again   [r] Retry current IP   [i] Change IP")
+	}
+	if m.verifyHostKey {
+		return badStyle.Render("SSH host key is not trusted yet") + "\n\n" +
+			fmt.Sprintf("Target: %s", m.target) + "\n\n" +
+			mutedStyle.Render("Review the fingerprint carefully before accepting it.") + "\n\n" +
+			titleStyle.Render("[v] Verify host key   [s] Search LAN   [i] Change IP")
+	}
+	body := badStyle.Render("Unable to reach the server") + "\n\n" + m.err.Error()
+	if m.failedAttempts < 5 {
+		return body + "\n\n" + mutedStyle.Render(fmt.Sprintf("Attempt %d of 5 failed. DevNode will retry automatically.", m.failedAttempts)) +
+			"\n\n" + titleStyle.Render("[r] Retry now   [s] Search LAN")
+	}
+	if m.editingHost {
+		body += "\n\n" + titleStyle.Render("New IP or hostname: ") + m.hostInput + "█"
+		if m.hostInputErr != nil {
+			body += "\n" + badStyle.Render(m.hostInputErr.Error())
+		}
+		return body + "\n\n" + mutedStyle.Render("Enter to connect  •  Esc to cancel")
+	}
+	return body + "\n\n" + warnStyle.Render("Automatic retries paused after 5 failed attempts.") +
+		"\n\n" + titleStyle.Render("[r] Retry current IP   [s] Search LAN   [i] Change IP")
 }
 func helpView() string {
-	return titleStyle.Render("KEYBOARD") + "\n\n  1 / 2 / 3       switch views\n  tab / ← / →     navigate views\n  r               refresh now\n  + / -           faster / slower refresh\n  q / esc          close DevNode\n\n" + titleStyle.Render("COMMANDS") + "\n\n  devnode install     choose one missing service\n  devnode hardware    hardware inventory\n  devnode network     interfaces and listening ports\n  devnode tunnel NAME secure local access"
+	return titleStyle.Render("KEYBOARD") + "\n\n  1 / 2 / 3       switch views\n  tab / ← / →     navigate views\n  r               refresh now\n  s               find moved server after failure\n  + / -           faster / slower refresh\n  q / esc          close DevNode\n\n" + titleStyle.Render("COMMANDS") + "\n\n  devnode install     choose one missing service\n  devnode hardware    hardware inventory\n  devnode network     interfaces and listening ports\n  devnode tunnel NAME secure local access"
 }
 func fallback(s string) string {
 	if s == "" {

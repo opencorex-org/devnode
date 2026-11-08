@@ -30,6 +30,11 @@ func Dashboard(w io.Writer, target string, s status.Snapshot, color bool) {
 	line(metric("CPU", s.CPU, ""))
 	line(metric("Memory", s.Memory, s.MemoryTotal))
 	line(metric("Disk", s.Disk, s.DiskTotal))
+	if s.NetAvailable {
+		line(fmt.Sprintf("  Network       ↓ %s received   ↑ %s sent", status.FormatBytes(s.NetRX), status.FormatBytes(s.NetTX)))
+	} else {
+		line("  Network       unavailable")
+	}
 
 	tools := status.DisplayTools(s.Tools)
 	if len(tools) > 0 {

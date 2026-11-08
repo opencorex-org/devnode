@@ -21,6 +21,21 @@ kv MEMORY_TOTAL "$(free -h 2>/dev/null | awk '/Mem:/ {print $2}')"
 kv DISK "$(df -P / 2>/dev/null | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
 kv DISK_TOTAL "$(df -hP / 2>/dev/null | awk 'NR==2 {print $2}')"
 
+_net_ifaces=$(ip -o route show default 2>/dev/null | awk '{for (i=1; i<=NF; i++) if ($i == "dev") print $(i+1)}' | sort -u | tr '\n' ' ' || true)
+_net=$(awk -v ifaces="$_net_ifaces" '
+  BEGIN { count=split(ifaces, names); for (i=1; i<=count; i++) if (names[i] != "") wanted[names[i]]=1 }
+  NR>2 {
+    sub(/:/, " ")
+    if ((length(ifaces) > 0 && wanted[$1]) || (length(ifaces) == 0 && $1 != "lo")) { rx += $2; tx += $10; found=1 }
+  }
+  END { if (found) printf "%.0f %.0f", rx, tx }
+' /proc/net/dev 2>/dev/null || true)
+if [ -n "$_net" ]; then
+  set -- $_net
+  kv NET_RX "$1"
+  kv NET_TX "$2"
+fi
+
 # Ensure common runtime directories are in PATH
 for _p in "$HOME/.local/bin" "$HOME/.cargo/bin" /snap/bin /usr/local/bin; do
   if [ -d "$_p" ]; then
@@ -129,6 +144,8 @@ type Service struct{ State, Source string }
 type Snapshot struct {
 	Host, OS, Arch, IP, Uptime, CPUModel, MemoryTotal, DiskTotal string
 	CPU, Memory, Disk                                            int
+	NetRX, NetTX                                                 uint64
+	NetAvailable                                                 bool
 	Services                                                     map[string]Service
 	Tools                                                        map[string]string
 }
@@ -194,6 +211,7 @@ func Parse(data string) (Snapshot, error) {
 		Services: map[string]Service{},
 		Tools:    map[string]string{},
 	}
+	netRXValid, netTXValid := false, false
 	scanner := bufio.NewScanner(strings.NewReader(data))
 	for scanner.Scan() {
 		key, value, ok := strings.Cut(scanner.Text(), "=")
@@ -223,6 +241,16 @@ func Parse(data string) (Snapshot, error) {
 			s.Disk = percent(value)
 		case "DISK_TOTAL":
 			s.DiskTotal = value
+		case "NET_RX":
+			if n, ok := bytes(value); ok {
+				s.NetRX = n
+				netRXValid = true
+			}
+		case "NET_TX":
+			if n, ok := bytes(value); ok {
+				s.NetTX = n
+				netTXValid = true
+			}
 		default:
 			if name, ok := strings.CutPrefix(key, "SERVICE_"); ok {
 				state, source, _ := strings.Cut(value, "|")
@@ -235,10 +263,33 @@ func Parse(data string) (Snapshot, error) {
 	if err := scanner.Err(); err != nil {
 		return s, err
 	}
+	s.NetAvailable = netRXValid && netTXValid
 	if s.Host == "" {
 		return s, fmt.Errorf("server returned an incomplete status response")
 	}
 	return s, nil
+}
+
+func bytes(s string) (uint64, bool) {
+	n, err := strconv.ParseUint(strings.TrimSpace(s), 10, 64)
+	return n, err == nil
+}
+
+// FormatBytes renders a byte count using compact binary units.
+func FormatBytes(n uint64) string {
+	const unit = uint64(1024)
+	if n < unit {
+		return fmt.Sprintf("%d B", n)
+	}
+	value, suffix := float64(n), "KiB"
+	for _, next := range []string{"MiB", "GiB", "TiB", "PiB"} {
+		value /= float64(unit)
+		if value < float64(unit) {
+			break
+		}
+		suffix = next
+	}
+	return fmt.Sprintf("%.1f %s", value, suffix)
 }
 
 func percent(s string) int {

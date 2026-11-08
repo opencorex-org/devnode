@@ -22,7 +22,7 @@ import (
 	"github.com/lahiruudayakumara/devnode/internal/ui"
 )
 
-const Version = "0.4.0"
+const Version = "0.5.0"
 
 const hardwareScript = `printf '%s\n' '========== CPU =========='; lscpu | grep -E 'Model name|CPU\(s\)|Architecture'; printf '%s\n' '========== RAM =========='; free -h; printf '%s\n' '========== STORAGE =========='; lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS; printf '%s\n' '========== DISK SPACE =========='; df -h /; printf '%s\n' '========== GPU =========='; lspci | grep -Ei 'vga|3d|display' || printf '%s\n' 'Not detected'; printf '%s\n' '========== DOCKER =========='; docker --version 2>/dev/null || printf '%s\n' 'Not installed'`
 
@@ -59,6 +59,12 @@ for root in "$HOME/dev" "$HOME/workspace"; do
 done`
 
 const doctorScript = `printf '%-20s %s\n' CHECK RESULT; for cmd in ssh systemctl docker git curl; do if command -v "$cmd" >/dev/null 2>&1; then printf '%-20s %s\n' "$cmd" OK; else printf '%-20s %s\n' "$cmd" MISSING; fi; done; if docker info >/dev/null 2>&1; then printf '%-20s %s\n' docker-access OK; else printf '%-20s %s\n' docker-access UNAVAILABLE; fi; printf '%-20s %s\n' disk-root "$(df -hP / | awk 'NR==2 {print $5 " used"}')"; printf '%-20s %s\n' memory "$(free -h | awk '/Mem:/ {print $3 " / " $2}')"`
+
+const persistentShellScript = `if ! command -v tmux >/dev/null 2>&1; then
+  printf '%s\n' 'tmux is required for persistent sessions.' 'Install it on Ubuntu with: sudo apt-get update && sudo apt-get install -y tmux' >&2
+  exit 127
+fi
+exec tmux new-session -A -s "$1"`
 
 const serviceScript = `container=$1 unit=$2 action=$3
 if command -v docker >/dev/null 2>&1 && docker inspect "$container" >/dev/null 2>&1; then
@@ -118,10 +124,12 @@ func (a *App) Run(ctx context.Context, args []string) error {
 	client := devssh.Client{Config: cfg, In: a.In, Out: a.Out, Err: a.Err}
 
 	switch args[0] {
+	case "discover":
+		return a.discover(ctx, client, cfg, *configPath, args[1:])
 	case "setup":
 		return noArgs(args[1:], func() error { return a.setup(ctx, client, cfg, *configPath) })
 	case "connect":
-		return noArgs(args[1:], func() error { return client.Run(ctx, nil, true, false) })
+		return a.connect(ctx, client, args[1:])
 	case "status", "dashboard":
 		return a.status(ctx, client, cfg, args[1:])
 	case "monitor":
@@ -183,6 +191,87 @@ func (a *App) Run(ctx context.Context, args []string) error {
 	default:
 		return fmt.Errorf("unknown command %q; run `devnode help`", args[0])
 	}
+}
+
+func (a *App) discover(ctx context.Context, client devssh.Client, cfg config.Config, configPath string, args []string) error {
+	fs := flag.NewFlagSet("discover", flag.ContinueOnError)
+	fs.SetOutput(a.Err)
+	runSetup := fs.Bool("setup", false, "continue passwordless SSH setup after discovery")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return errors.New("usage: devnode discover [--setup]")
+	}
+	parts := strings.Split(cfg.Host, ".")
+	if len(parts) == 4 {
+		fmt.Fprintf(a.Out, "Searching %s.%s.%s.0/24 for the trusted SSH host key on port %d...\n", parts[0], parts[1], parts[2], cfg.Port)
+	} else {
+		fmt.Fprintf(a.Out, "Searching near %s for the trusted SSH host key on port %d...\n", cfg.Host, cfg.Port)
+	}
+	host, err := client.DiscoverMovedHost(ctx)
+	if err != nil {
+		return fmt.Errorf("discover server: %w", err)
+	}
+	updated, err := saveDiscoveredHost(configPath, cfg, host)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(a.Out, "Found the trusted server at %s. Updated %s\n", host, configPath)
+	if !*runSetup {
+		fmt.Fprintln(a.Out, "Run `devnode status` or `devnode discover --setup` next.")
+		return nil
+	}
+	client.Config = updated
+	fmt.Fprintln(a.Out, "Continuing SSH setup...")
+	return a.setup(ctx, client, updated, configPath)
+}
+
+func saveDiscoveredHost(path string, cfg config.Config, host string) (config.Config, error) {
+	updated := cfg
+	updated.Host = host
+	if err := updated.Validate(); err != nil {
+		return cfg, fmt.Errorf("invalid discovered host: %w", err)
+	}
+	if err := config.Save(path, updated); err != nil {
+		return cfg, fmt.Errorf("save discovered host: %w", err)
+	}
+	return updated, nil
+}
+
+func (a *App) connect(ctx context.Context, client devssh.Client, args []string) error {
+	fs := flag.NewFlagSet("connect", flag.ContinueOnError)
+	fs.SetOutput(a.Err)
+	persistent := fs.Bool("persistent", false, "attach or create a remote tmux session")
+	session := fs.String("session", "devnode", "tmux session name")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return errors.New("usage: devnode connect [--persistent] [--session NAME]")
+	}
+	if !*persistent {
+		if *session != "devnode" {
+			return errors.New("--session requires --persistent")
+		}
+		return client.Run(ctx, nil, true, false)
+	}
+	if !safeSessionName(*session) {
+		return errors.New("session name must be 1-64 letters, numbers, underscores, or hyphens")
+	}
+	return client.Run(ctx, []string{"sh", "-c", persistentShellScript, "devnode-connect", *session}, true, false)
+}
+
+func safeSessionName(name string) bool {
+	if len(name) == 0 || len(name) > 64 {
+		return false
+	}
+	for _, r := range name {
+		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '-') {
+			return false
+		}
+	}
+	return true
 }
 
 func (a *App) status(ctx context.Context, client devssh.Client, cfg config.Config, args []string) error {
@@ -621,8 +710,9 @@ Usage:
   devnode [--config PATH] <command> [arguments]
 
 Commands:
+  discover [--setup]             Find a moved server by its trusted SSH key
   setup                           Configure passwordless SSH (one-time)
-  connect                         Open an interactive SSH session
+  connect [--persistent]         Open SSH; persistent mode survives disconnects
   status, dashboard               Open the live server dashboard
   hardware                        Show CPU, RAM, storage, GPU, and Docker
   network                         Show addresses, routes, ports, and DNS

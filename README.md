@@ -51,6 +51,10 @@ devnode network                 # Show IP addresses, routes, open ports, and DNS
 devnode doctor                  # Validate server prerequisites and resource usage
 devnode monitor                 # Interactive btop, htop, or top
 devnode connect                 # Interactive SSH shell
+devnode connect --persistent    # Resumable tmux shell that survives laptop sleep
+devnode connect --persistent --session work # Resume a named remote shell
+devnode discover                # Find a changed LAN IP by trusted SSH key
+devnode discover --setup        # Find, save, and continue SSH setup
 
 # Project & Package Management (pnpm / npm / yarn / bun)
 devnode projects                # List projects in ~/projects with package manager & Git branch
@@ -83,6 +87,18 @@ devnode config <init|show>      # Initialize or display configuration path
 devnode shutdown [--yes]        # Safely shut down the remote host
 ```
 
+### Persistent shell across laptop sleep
+
+Use `devnode connect --persistent` when commands must keep running on Ubuntu
+while the laptop sleeps, changes networks, or loses Wi-Fi. DevNode attaches to
+a remote `tmux` session named `devnode`. After waking the laptop, run the same
+command again to resume exactly where you left off. Use `--session NAME` for
+separate work sessions.
+
+The laptop cannot keep its SSH network connection active while asleep, but the
+Ubuntu process and terminal continue inside `tmux`. If `tmux` is missing,
+DevNode prints the exact Ubuntu installation command.
+
 ---
 
 ## Live Dashboard & Status
@@ -96,10 +112,14 @@ The status dashboard is a responsive full-screen terminal UI:
 - **Live Runtimes & Toolchain Detection**: Automatically detects and displays versions for:
   - `Node.js`, `npm`, and `pnpm` (always visible with active version or `not installed`)
   - `Yarn`, `Bun`, `Python`, `Go`, `Rust`, `Git`, and `Docker` (shown when detected)
+- **Internet Data Usage Meter**: Shows live download/upload rates and cumulative traffic on the remote server's default network interface(s). Totals reset when the server or interface counters reset.
 - **Keyboard Navigation**:
   - `1`, `2`, `3` or `Tab` / `←` / `→` — switch between Overview, Services, and Help tabs
   - `+` / `-` — adjust refresh interval by 500ms steps (down to 500ms)
   - `r` — trigger an immediate refresh
+  - `s` — after a connection failure, search the old IPv4 `/24` for the same trusted SSH host key
+  - `i` — after repeated failures, enter a replacement IP manually
+  - `v` — review and trust a newly discovered host address while the dashboard is safely suspended
   - `q` / `Esc` — exit
 
 For scripting or headless output, use:

@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/lahiruudayakumara/devnode/internal/config"
 )
 
 func TestHelpAndVersion(t *testing.T) {
@@ -118,5 +120,45 @@ func TestSafeProjectName(t *testing.T) {
 		if safeProjectName(name) {
 			t.Errorf("expected %q to be invalid", name)
 		}
+	}
+}
+
+func TestSafeSessionName(t *testing.T) {
+	for _, name := range []string{"devnode", "work_2", "api-server", "A1"} {
+		if !safeSessionName(name) {
+			t.Errorf("expected %q to be valid", name)
+		}
+	}
+	for _, name := range []string{"", "has space", "name:window", "../escape", "$(reboot)", strings.Repeat("a", 65)} {
+		if safeSessionName(name) {
+			t.Errorf("expected %q to be invalid", name)
+		}
+	}
+}
+
+func TestPersistentShellScriptChecksTmux(t *testing.T) {
+	for _, want := range []string{"command -v tmux", "tmux new-session -A -s", "sudo apt-get install -y tmux"} {
+		if !strings.Contains(persistentShellScript, want) {
+			t.Errorf("persistent shell script missing %q", want)
+		}
+	}
+}
+
+func TestSaveDiscoveredHostPreservesConfig(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	original := config.Config{
+		Host: "192.168.1.17", User: "lahiru", Port: 2222,
+		IdentityFile: "/tmp/devnode-key", ConnectTimeout: 12, PostgresService: "postgresql@16-main",
+	}
+	updated, err := saveDiscoveredHost(path, original, "192.168.1.19")
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := config.Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Host != "192.168.1.19" || loaded != updated || loaded.User != original.User || loaded.Port != original.Port || loaded.IdentityFile != original.IdentityFile {
+		t.Fatalf("configuration was not preserved: original=%+v updated=%+v loaded=%+v", original, updated, loaded)
 	}
 }
