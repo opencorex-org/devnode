@@ -17,7 +17,7 @@
         PackageDisplayName="DevNode"
         PublisherName="CN=DevNode"
         PublisherDisplayName="DevNode"
-        Version="0.5.0.0"
+        Version="0.1.0.0"
         PackageDescription="Cross-platform Ubuntu development server manager">
         <Capabilities>
             <Capability Name="runFullTrust" />
