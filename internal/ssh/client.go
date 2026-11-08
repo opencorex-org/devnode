@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lahiruudayakumara/devnode/internal/config"
+	"github.com/opencorex-org/devnode/internal/config"
 )
 
 type Client struct {

@@ -1,9 +1,9 @@
-module github.com/lahiruudayakumara/devnode/desktop
+module github.com/opencorex-org/devnode/desktop
 
 go 1.26.0
 
 require (
-	github.com/lahiruudayakumara/devnode v0.0.0
+	github.com/opencorex-org/devnode v0.0.0
 	github.com/wailsapp/wails/v3 v3.0.0
 )
 
@@ -17,4 +17,4 @@ require (
 	golang.org/x/sys v0.48.0 // indirect
 )
 
-replace github.com/lahiruudayakumara/devnode => ..
+replace github.com/opencorex-org/devnode => ..

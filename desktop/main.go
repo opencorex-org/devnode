@@ -1,11 +1,11 @@
 package main
 
 import (
-	_ "embed"
 	"embed"
+	_ "embed"
 	"log"
 
-	"github.com/lahiruudayakumara/devnode/desktop/backend"
+	"github.com/opencorex-org/devnode/desktop/backend"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -27,7 +27,7 @@ func main() {
 		},
 		Linux: application.LinuxOptions{
 			ProgramName:   "devnode-desktop",
-			ApplicationID: "com.lahiruudayakumara.devnode",
+			ApplicationID: "com.opencorex-org.devnode",
 		},
 	})
 

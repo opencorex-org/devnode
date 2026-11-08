@@ -6,7 +6,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/lahiruudayakumara/devnode/internal/config"
+	"github.com/opencorex-org/devnode/internal/config"
 )
 
 func TestJoinCommand(t *testing.T) {

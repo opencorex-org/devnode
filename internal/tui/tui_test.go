@@ -8,9 +8,9 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/lahiruudayakumara/devnode/internal/config"
-	devssh "github.com/lahiruudayakumara/devnode/internal/ssh"
-	"github.com/lahiruudayakumara/devnode/internal/status"
+	"github.com/opencorex-org/devnode/internal/config"
+	devssh "github.com/opencorex-org/devnode/internal/ssh"
+	"github.com/opencorex-org/devnode/internal/status"
 )
 
 func TestViewAndNavigation(t *testing.T) {

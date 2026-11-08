@@ -233,9 +233,9 @@ Configuration is stored in `~/.config/devnode/config.yaml`:
 # Set to an mDNS hostname (e.g. ubuntu.local) for automatic zero-config LAN discovery,
 # or to a local IPv4 address.
 host: ubuntu.local
-user: lahiru
+user: opencorex
 port: 22
-identity_file: "/Users/lahiru/.ssh/devnode_ed25519"
+identity_file: "/Users/opencorex/.ssh/devnode_ed25519"
 connect_timeout: 8
 postgres_service: postgresql
 ```

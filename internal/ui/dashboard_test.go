@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lahiruudayakumara/devnode/internal/status"
+	"github.com/opencorex-org/devnode/internal/status"
 )
 
 func TestDashboardShowsManagerAndInventory(t *testing.T) {

@@ -14,12 +14,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lahiruudayakumara/devnode/internal/catalog"
-	"github.com/lahiruudayakumara/devnode/internal/config"
-	devssh "github.com/lahiruudayakumara/devnode/internal/ssh"
-	"github.com/lahiruudayakumara/devnode/internal/status"
-	devtui "github.com/lahiruudayakumara/devnode/internal/tui"
-	"github.com/lahiruudayakumara/devnode/internal/ui"
+	"github.com/opencorex-org/devnode/internal/catalog"
+	"github.com/opencorex-org/devnode/internal/config"
+	devssh "github.com/opencorex-org/devnode/internal/ssh"
+	"github.com/opencorex-org/devnode/internal/status"
+	devtui "github.com/opencorex-org/devnode/internal/tui"
+	"github.com/opencorex-org/devnode/internal/ui"
 )
 
 const Version = "0.5.0"

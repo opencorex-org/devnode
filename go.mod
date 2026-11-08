@@ -1,4 +1,4 @@
-module github.com/lahiruudayakumara/devnode
+module github.com/opencorex-org/devnode
 
 go 1.25.0
 

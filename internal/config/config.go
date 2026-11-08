@@ -13,7 +13,7 @@ import (
 
 const Example = `# DevNode configuration
 host: auto
-user: lahiru
+user: opencorex
 port: 22
 identity_file: ""
 connect_timeout: 8

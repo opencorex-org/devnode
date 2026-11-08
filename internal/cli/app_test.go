@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lahiruudayakumara/devnode/internal/config"
+	"github.com/opencorex-org/devnode/internal/config"
 )
 
 func TestHelpAndVersion(t *testing.T) {
@@ -147,7 +147,7 @@ func TestPersistentShellScriptChecksTmux(t *testing.T) {
 func TestSaveDiscoveredHostPreservesConfig(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.yaml")
 	original := config.Config{
-		Host: "192.168.1.17", User: "lahiru", Port: 2222,
+		Host: "192.168.1.17", User: "opencorex", Port: 2222,
 		IdentityFile: "/tmp/devnode-key", ConnectTimeout: 12, PostgresService: "postgresql@16-main",
 	}
 	updated, err := saveDiscoveredHost(path, original, "192.168.1.19")

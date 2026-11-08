@@ -110,7 +110,7 @@ export function HelpPage({
       title: "Install and start the Ubuntu agent",
       text: "Install the DevNode pairing agent and start a secure pairing session.",
       command:
-        "git clone https://github.com/lahiruudayakumara/devnode.git\ncd devnode\nmake install-agent\n~/.local/bin/devnode-agent pair",
+        "git clone https://github.com/opencorex-org/devnode.git\ncd devnode\nmake install-agent\n~/.local/bin/devnode-agent pair",
       hint: "If UFW is active, allow TCP 42424 and UDP 42425.",
     },
     {

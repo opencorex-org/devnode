@@ -10,9 +10,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/lahiruudayakumara/devnode/internal/config"
-	devssh "github.com/lahiruudayakumara/devnode/internal/ssh"
-	"github.com/lahiruudayakumara/devnode/internal/status"
+	"github.com/opencorex-org/devnode/internal/config"
+	devssh "github.com/opencorex-org/devnode/internal/ssh"
+	"github.com/opencorex-org/devnode/internal/status"
 )
 
 var (

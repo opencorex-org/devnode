@@ -18,7 +18,7 @@ ssh -V
 ## Get the source
 
 ```sh
-git clone https://github.com/lahiruudayakumara/devnode.git
+git clone https://github.com/opencorex-org/devnode.git
 cd devnode
 go mod download
 ```

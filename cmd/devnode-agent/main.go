@@ -9,7 +9,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/lahiruudayakumara/devnode/internal/pairing"
+	"github.com/opencorex-org/devnode/internal/pairing"
 )
 
 func main() {

@@ -6,7 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/lahiruudayakumara/devnode/internal/cli"
+	"github.com/opencorex-org/devnode/internal/cli"
 )
 
 func main() {

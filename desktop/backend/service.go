@@ -16,11 +16,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lahiruudayakumara/devnode/internal/catalog"
-	"github.com/lahiruudayakumara/devnode/internal/config"
-	"github.com/lahiruudayakumara/devnode/internal/pairing"
-	devssh "github.com/lahiruudayakumara/devnode/internal/ssh"
-	"github.com/lahiruudayakumara/devnode/internal/status"
+	"github.com/opencorex-org/devnode/internal/catalog"
+	"github.com/opencorex-org/devnode/internal/config"
+	"github.com/opencorex-org/devnode/internal/pairing"
+	devssh "github.com/opencorex-org/devnode/internal/ssh"
+	"github.com/opencorex-org/devnode/internal/status"
 )
 
 const requestTimeout = 20 * time.Second

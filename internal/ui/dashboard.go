@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/lahiruudayakumara/devnode/internal/status"
+	"github.com/opencorex-org/devnode/internal/status"
 )
 
 type serviceItem struct{ label, key string }
