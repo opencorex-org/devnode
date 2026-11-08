@@ -232,7 +232,7 @@ function Help({ initialPlatform }: { initialPlatform: string }) {
       <HelpStep number="02" title="Find the Ubuntu address" text="Both computers must be connected to the same Wi-Fi or local network. Save the IPv4 address shown by this command." command="hostname -I" hint="Example: 192.168.1.20"/>
       <HelpStep number="03" title={`Prepare ${client.label}`} text={client.note} command={client.command}/>
       <HelpStep number="04" title="Test SSH manually" text="Replace the username and address with the Ubuntu account name and address. Accept the host key, then enter the Ubuntu password." command="ssh ubuntu-user@192.168.1.20" hint="A successful login confirms the network, SSH server, username, and password are correct."/>
-      <HelpStep number="05" title="Install and start the Ubuntu agent" text="From the DevNode repository on Ubuntu, install the local pairing helper. If UFW is active, allow the temporary pairing protocol, then open a secure two-minute window." command={"make install-agent\nsudo ufw allow 42424/tcp\nsudo ufw allow 42425/udp\n~/.local/bin/devnode-agent pair"}/>
+      <HelpStep number="05" title="Install and start the Ubuntu agent" text="Run these commands on Ubuntu. They download DevNode, install the local pairing helper, and open a secure two-minute pairing window." command={"git clone https://github.com/lahiruudayakumara/devnode.git\ncd devnode\nmake install-agent\n~/.local/bin/devnode-agent pair"} hint="If UFW is active, also allow TCP port 42424 and UDP port 42425 before starting the agent."/>
       <HelpStep number="06" title="Pair automatically" text="Open Connection, select Scan local network, choose the Ubuntu computer, compare the six-digit code, and approve the request in the Ubuntu terminal."/>
     </section>
 
