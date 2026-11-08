@@ -2,10 +2,15 @@
 
 DevNode is a fast, dependency-free macOS CLI for managing an Ubuntu development server over SSH. It uses the system `ssh` client with connection multiplexing, so your existing SSH agent, `~/.ssh/config`, host-key verification, and hardware-backed keys continue to work seamlessly with ~15ms query execution.
 
+The repository also contains **DevNode Desktop**, a custom Wails and React
+interface for macOS, Linux, and Windows. It reuses the same Go connection,
+discovery, monitoring, project, and service packages while keeping the CLI
+available for terminal workflows. See [`desktop/`](desktop/README.md).
+
 ## Requirements
 
 - macOS with OpenSSH (included by default)
-- Go 1.23 or newer to build
+- Go 1.25 or newer to build
 - An Ubuntu host with `sshd` running and key-based login configured
 - `sudo` rights on Ubuntu for PostgreSQL control and system operations
 
@@ -275,3 +280,21 @@ make test   # Run all package unit tests
 make vet    # Run static analysis
 make build  # Build devnode binary to ./bin/devnode
 ```
+
+See the [`docs/`](docs/README.md) folder for complete build, installation, and
+release instructions.
+
+## Secure desktop pairing
+
+Install the pairing helper once on the Ubuntu computer:
+
+```sh
+make install-agent
+devnode-agent pair
+```
+
+Then open **Connection** in DevNode Desktop and select **Scan local network**.
+Compare the code shown on both computers and approve it on Ubuntu. DevNode
+installs only the public key, pins Ubuntu's SSH identity, and reconnects
+automatically when the local IP address changes. See the
+[secure pairing guide](docs/secure-pairing.md).
