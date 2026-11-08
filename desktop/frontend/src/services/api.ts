@@ -1,5 +1,5 @@
-import * as Backend from "../bindings/github.com/lahiruudayakumara/devnode/desktop/backend/service";
-import type { Bootstrap, CatalogItem, ConnectionInput, Dashboard, PairingServer, PairProgress, Project } from "./types";
+import * as Backend from "../../bindings/github.com/lahiruudayakumara/devnode/desktop/backend/service";
+import type { Bootstrap, CatalogItem, ConnectionInput, Dashboard, PairingServer, PairProgress, Project } from "../types";
 
 export const api = {
   bootstrap: () => Backend.Bootstrap() as Promise<Bootstrap>,
@@ -16,4 +16,3 @@ export const api = {
   createProject: (name: string) => Backend.CreateProject(name),
   connectionCommand: () => Backend.ConnectionCommand() as Promise<string>,
 };
-
