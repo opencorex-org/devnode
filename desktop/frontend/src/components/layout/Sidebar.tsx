@@ -80,9 +80,9 @@ export function Sidebar({
 
               <span className="truncate">{item.label}</span>
 
-              {active && (
+              {/* {active && (
                 <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400" />
-              )}
+              )} */}
             </button>
           );
         })}
